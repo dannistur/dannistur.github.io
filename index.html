@@ -279,7 +279,7 @@
       if (pedido){ pedido.prompt(); try { await pedido.userChoice; } catch(e){} pedido = null; return; }
       dica.hidden = !dica.hidden;
       dica.innerHTML = ios
-        ? "<b>No iPhone:</b> toque em <b>Compartilhar</b> (o quadrado com a setinha pra cima, embaixo no Safari) › <b>Adicionar à Tela de Início</b> › <b>Adicionar</b>."
+        ? "<b>No iPhone (Safari):</b> 1) toque nos <b>3 pontinhos (…)</b> embaixo da tela › 2) <b>Compartilhar</b> › 3) <b>Adicionar à Tela de Início</b> › 4) <b>Adicionar</b>.<br><small>Em iPhone mais antigo, o botão <b>Compartilhar</b> (quadrado com setinha pra cima) já aparece direto embaixo.</small>"
         : android
         ? "<b>No Android:</b> toque nos <b>3 pontinhos</b> do navegador (em cima, à direita) › <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>."
         : "<b>No computador (Chrome ou Edge):</b> clique no ícone de instalar na barra de endereço (uma telinha com setinha, à direita) ou nos <b>3 pontinhos</b> › <b>Transmitir, salvar e compartilhar</b> › <b>Instalar página como app</b>.";
