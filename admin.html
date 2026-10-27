@@ -53,6 +53,15 @@ body{margin:0}
 .pill.vai_entregar_impresso{background:#efe6ff;color:#5b3fc4}
 .pill.assinado_online,.pill.recebido{background:#e3f6ea;color:var(--ok)}
 .pill.cancelado{background:#eee;color:#777}
+/* cartão de aniversário */
+.bt-cartao{padding:8px 12px;font-size:14px;background:var(--laranja);color:#fff}
+.mini-cartao{border:0;background:#fff1e0;color:#a5510b;border-radius:999px;padding:2px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px}
+dialog#dlgCartao{border:0;padding:0;border-radius:18px;width:min(460px,100vw - 24px);max-height:calc(100vh - 24px);background:#fff;color:var(--tinta)}
+dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
+.dc{display:grid;gap:12px;padding:16px}
+.dc img{width:100%;height:auto;border-radius:12px;display:block;background:#712473;aspect-ratio:1080/1350}
+.dc .bts{display:grid;gap:8px}
+.dc p{margin:0;font-size:13px;color:var(--tinta-2)}
 .vazio{text-align:center;color:var(--tinta-2);padding:30px 10px;border:1.5px dashed var(--linha);border-radius:14px}
 /* detalhe */
 .det{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
@@ -156,9 +165,23 @@ body{margin:0}
   </section>
 </div>
 
+<dialog id="dlgCartao" aria-labelledby="dcTit">
+  <div class="dc">
+    <h3 id="dcTit" style="font-size:20px">Cartão de aniversário</h3>
+    <img id="dcImg" alt="Cartão de aniversário">
+    <div class="bts">
+      <button type="button" class="btn btn-zap" id="dcEnviar">Mandar no WhatsApp da família</button>
+      <button type="button" class="btn btn-sec" id="dcBaixar">Baixar a imagem</button>
+      <button type="button" class="btn btn-link" id="dcFechar">Fechar</button>
+    </div>
+    <p id="dcDica">No celular, o botão verde abre o compartilhar com o cartão: escolha o WhatsApp e a conversa da família. No computador, a imagem é baixada e a conversa abre com a mensagem pronta: é só anexar a imagem.</p>
+  </div>
+</dialog>
+
 <div id="printArea"></div>
 
 <script src="comum.js?v=7"></script>
+<script src="cartao.js?v=1"></script>
 <script>
 (function(){
   const $ = s => document.querySelector(s);
@@ -231,8 +254,26 @@ body{margin:0}
     $("#aniv").hidden = !itens.length; if (!itens.length) return;
     $("#aniv").innerHTML = `<h3>🎂 Aniversariantes de hoje</h3><ul>${itens.map(i=>`
       <li class="${i.dias===0?"hoje":""}"><span><b>${esc(i.a.nome)}</b> faz ${i.faz} ${i.dias===0?"<b>HOJE</b>":i.dias===1?"amanhã":`em ${i.data}`}<br><small>${esc(i.a.escola)} · ${esc(i.f.responsavel)}</small></span>
-      <a class="btn btn-zap" style="padding:8px 12px;font-size:14px" target="_blank" rel="noopener" href="${zapLink(i.f.celular, `Parabéns, ${i.a.nome.split(" ")[0]}! 🎉🎂 Feliz ${i.faz} ${i.faz===1?"ano":"anos"}! Um abraço de toda a turma da Danni's Tur. 🚐💜`)}">Mandar parabéns</a></li>`).join("")}</ul>`;
+      <button type="button" class="btn bt-cartao" data-fam="${i.f.id}" data-al="${i.f.alunos.indexOf(i.a)}">🎂 Cartão de parabéns</button></li>`).join("")}</ul>`;
+    $("#aniv").querySelectorAll(".bt-cartao").forEach(b=>b.onclick=()=>abrirCartao(b.dataset.fam, +b.dataset.al));
   }
+
+  /* ---------- cartão de aniversário ---------- */
+  let cartaoAtual = null;
+  async function abrirCartao(famId, idx){
+    const f = familias.find(x=>String(x.id)===String(famId)); if (!f) return;
+    const a = f.alunos[idx]; if (!a || !a.nasc) return;
+    const [y,m,d] = a.nasc.split("-").map(Number), hoje = new Date();
+    const anos = hoje.getFullYear() - y - ((hoje.getMonth()+1 < m || (hoje.getMonth()+1===m && hoje.getDate() < d)) ? 1 : 0) + ((hoje.getMonth()+1===m && hoje.getDate()===d) ? 0 : 1);
+    const dados = {nome:a.nome, anos: Math.max(1, anos), escola:a.escola};
+    const dlg = $("#dlgCartao"); $("#dcImg").removeAttribute("src"); $("#dcTit").textContent = `Cartão de ${a.nome.split(" ")[0]} · ${dados.anos} ${dados.anos===1?"ano":"anos"}`;
+    dlg.showModal ? dlg.showModal() : dlg.setAttribute("open","");
+    try{ const cv = await Cartao.cartao(dados); cartaoAtual = {dados, cv, tel:f.celular}; $("#dcImg").src = cv.toDataURL("image/png"); }
+    catch(e){ $("#dcDica").textContent = "Não consegui montar o cartão agora. Recarregue a página e tente de novo."; }
+  }
+  $("#dcEnviar").onclick = async ()=>{ if (cartaoAtual) await Cartao.enviar(cartaoAtual.dados, cartaoAtual.cv, cartaoAtual.tel); };
+  $("#dcBaixar").onclick = ()=>{ if (cartaoAtual) Cartao.baixar(cartaoAtual.dados, cartaoAtual.cv); };
+  $("#dcFechar").onclick = ()=>{ const d = $("#dlgCartao"); d.close ? d.close() : d.removeAttribute("open"); };
 
   /* ---------- detalhe ---------- */
   let ops = ""; for (let k=INI;k<=FIM;k++) ops += `<option value="${k}">${nomeMes(k)}</option>`; $("#xIni").innerHTML = ops;
@@ -241,6 +282,7 @@ body{margin:0}
   const comoAbrir = "\n\nÉ só entrar com o seu CPF e a data de nascimento do seu filho(a).";
   /* link do aviso do WhatsApp (…/admin.html#f=12): abre direto na família, com o cursor no valor */
   function abrePeloLink(){
+    if (location.hash === "#aniversarios"){ history.replaceState(null, "", location.pathname); setTimeout(()=>{ if (!$("#aniv").hidden) $("#aniv").scrollIntoView({behavior:"smooth", block:"start"}); }, 200); return; }
     const m = location.hash.match(/^#f=(\d+)$/); if (!m) return;
     history.replaceState(null, "", location.pathname);
     if (familias.some(f => String(f.id) === m[1])){ abrir(m[1]); setTimeout(() => { const c = $("#xPv"); c.scrollIntoView({block:"center"}); c.focus(); }, 150); }
@@ -255,9 +297,10 @@ body{margin:0}
       <span><b>Celular</b> ${esc(f.celular)}${f.foneCasa?` · <b>casa</b> ${esc(f.foneCasa)}`:""}${f.outroFone?` · <b>outro</b> ${esc(f.outroFone)}`:""}</span>
       ${f.email?`<span><b>E-mail</b> ${esc(f.email)}</span>`:""}
       <span><b>Endereço</b> ${esc(f.rua)} – ${esc(f.bairro)} – ${esc(f.cidade)} – ${esc(f.cep)}</span>
-      ${f.alunos.map(a=>`<span><b>${esc(a.nome)}</b> · ${fmtData(a.nasc)} (${idade(a.nasc)} anos) · ${esc(a.escola)} · ${esc(a.periodo)} · ${esc(a.trajeto)}</span>`).join("")}
+      ${f.alunos.map((a,i)=>`<span><b>${esc(a.nome)}</b> · ${fmtData(a.nasc)} (${idade(a.nasc)} anos) · ${esc(a.escola)} · ${esc(a.periodo)} · ${esc(a.trajeto)}${a.nasc?`<button type="button" class="mini-cartao" data-al="${i}">🎂 Cartão</button>`:""}</span>`).join("")}
       ${f.obs?`<span><b>Obs. da família</b> ${esc(f.obs)}</span>`:""}
       <span><b>Cadastro</b> ${fmtData(f.dataCadastro)}${f.liberadoEm?` · <b>liberado</b> ${fmtData(f.liberadoEm)}`:""}${f.assinadoEm?` · <b>assinado</b> ${fmtData(f.assinadoEm)}`:""}</span>`;
+    $("#dInfo").querySelectorAll(".mini-cartao").forEach(b=>b.onclick=()=>abrirCartao(f.id, +b.dataset.al));
     $("#xIni").value = vg.ini; $("#xMeses").value = vg.meses;
     $("#xPv").value = num(v.mensalidade) ? brl(num(v.mensalidade)) : "";
     $("#xParc").value = v.parcelas || vg.meses;

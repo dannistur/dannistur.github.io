@@ -231,7 +231,7 @@ function avisarAniversariantes(){
     });
   });
   if (!hojeL.length) return;
-  avisaDono_(`🎂 *Aniversariantes de hoje*\n${hojeL.join("\n")}\n\nDá pra mandar os parabéns pela Área Danni's.`);
+  avisaDono_(`🎂 *Aniversariantes de hoje*\n${hojeL.join("\n")}\n\n🎉 Toque aqui pra mandar o cartão de parabéns pra família:\n${SITE}admin.html#aniversarios`);
 }
 
 /* ===================== avisos ===================== */
