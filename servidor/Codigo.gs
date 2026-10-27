@@ -1,7 +1,8 @@
 /**
  * Danni's Tur · servidor da renovação 2027 (Google Apps Script)
  *
- * Guarda os cadastros numa planilha Google, entrega o contrato de cada família por um link próprio,
+ * Guarda os cadastros numa planilha Google, mostra a cada família só o próprio contrato (CPF do responsável
+ * + data de nascimento de um dos alunos),
  * deixa a Danni's Tur colocar valor e liberar o contrato, recebe o contrato assinado e avisa
  * aniversariantes e novidades no WhatsApp do dono (via CallMeBot, grátis, só pro próprio número).
  *
@@ -27,9 +28,10 @@ function doPost(e){
   try {
     switch (req.acao){
       case "cadastrar":        return json_(cadastrar_(req.dados));
-      case "ver":              return json_(ver_(req.token));
+      case "buscar":           return json_(buscar_(req));
+      case "ver":              return json_(ver_(req));
       case "enviar_assinado":  return json_(enviarAssinado_(req));
-      case "vou_imprimir":     return json_(vouImprimir_(req.token));
+      case "vou_imprimir":     return json_(vouImprimir_(req));
       case "admin_login":      admin_(req); return json_({ok:true});
       case "admin_lista":      admin_(req); return json_(lista_());
       case "admin_salvar":     admin_(req); return json_(salvar_(req));
@@ -78,9 +80,43 @@ function cadastrar_(d){
   } finally { lock.releaseLock(); }
 }
 
-function ver_(token){
-  const r = porToken_(token);
-  if (!r) throw erro_("Link inválido. Confira o link que a Danni's Tur te mandou.", "token");
+/* "Meu contrato": a família se identifica com o CPF do responsável + a data de nascimento de um dos alunos.
+   Cada família só enxerga o próprio contrato; quem recebe um link encaminhado não abre sem esses dados. */
+const MSG_NAO_ACHEI = "Não encontramos contrato com esse CPF e essa data de nascimento. Confira e tente de novo.";
+function confere_(o, cpf, nasc){
+  const c = String(cpf || "").replace(/\D/g, ""), n = String(nasc || "").slice(0, 10);
+  if (c.length !== 11 || !/^\d{4}-\d{2}-\d{2}$/.test(n)) return false;
+  if (String(o.cpf || "").replace(/\D/g, "") !== c) return false;
+  let alunos = []; try { alunos = JSON.parse(o.alunos_json || "[]"); } catch(e){}
+  return alunos.some(a => String(a.nasc || "").slice(0, 10) === n);
+}
+function tentativas_(chave){   // no máximo 6 erros a cada 15 minutos por CPF/link
+  const c = CacheService.getScriptCache(), k = "tent_" + chave, n = Number(c.get(k) || 0);
+  if (n >= 6) throw erro_("Muitas tentativas. Espere 15 minutos e tente de novo.", "limite");
+  return () => c.put(k, String(n + 1), 900);
+}
+function buscar_(req){
+  const cpf = String(req.cpf || "").replace(/\D/g, "");
+  if (cpf.length !== 11) throw erro_("Digite o CPF completo do responsável.", "dados");
+  const falhou = tentativas_(cpf);
+  const vals = aba_().getDataRange().getValues();
+  let achou = null;
+  for (let i = 1; i < vals.length; i++){
+    const o = obj_(vals[i]);
+    if (o.status !== STATUS.CANCELADO && confere_(o, cpf, req.nasc)) achou = o;   // fica com o mais recente
+  }
+  if (!achou){ falhou(); Utilities.sleep(1000); throw erro_(MSG_NAO_ACHEI, "nao_achou"); }
+  return {ok:true, token: achou.token};
+}
+function verificado_(req){
+  const falhou = tentativas_(String(req.token || "").toUpperCase().slice(0, 40));
+  const r = porToken_(req.token);
+  if (!r || !confere_(r.obj, req.cpf, req.nasc)){ falhou(); throw erro_(MSG_NAO_ACHEI, "nao_achou"); }
+  return r;
+}
+
+function ver_(req){
+  const r = verificado_(req);
   const f = publico_(r.obj);
   const liberado = [STATUS.LIBERADO, STATUS.ASSINADO, STATUS.IMPRESSO, STATUS.RECEBIDO].indexOf(r.obj.status) >= 0;
   if (!liberado){ delete f.valores; }
@@ -89,8 +125,7 @@ function ver_(token){
 }
 
 function enviarAssinado_(req){
-  const r = porToken_(req.token);
-  if (!r) throw erro_("Link inválido.", "token");
+  const r = verificado_(req);
   if (r.obj.status === STATUS.AGUARDANDO) throw erro_("O contrato ainda não foi liberado.");
   if (!req.base64 || String(req.base64).length > 14e6) throw erro_("Arquivo muito grande (máximo 10 MB).");
   const tipo = /^(application\/pdf|image\/(jpeg|png|heic|webp))$/.test(req.tipo) ? req.tipo : "application/pdf";
@@ -101,9 +136,8 @@ function enviarAssinado_(req){
   return {ok:true};
 }
 
-function vouImprimir_(token){
-  const r = porToken_(token);
-  if (!r) throw erro_("Link inválido.", "token");
+function vouImprimir_(req){
+  const r = verificado_(req);
   if (r.obj.status === STATUS.AGUARDANDO) throw erro_("O contrato ainda não foi liberado.");
   if (r.obj.status === STATUS.LIBERADO){
     atualiza_(r.linha, {status:STATUS.IMPRESSO});
@@ -146,10 +180,10 @@ function assinarDannis_(req){
   let email = false;
   if (r.obj.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r.obj.email)){
     try {
-      const link = `${SITE}contrato?${r.obj.token}`, nome = String(r.obj.responsavel).split(" ")[0];
+      const link = `${SITE}contrato`, nome = String(r.obj.responsavel).split(" ")[0];
       MailApp.sendEmail({to: r.obj.email, name: "Danni's Tur", subject: "Seu contrato Danni's Tur 2027 – falta só a sua assinatura",
-        body: `Olá, ${nome}!\n\nSeu contrato do transporte escolar 2027 já está assinado pela Danni's Tur. Falta só você assinar pelo gov.br (é grátis):\n${link}\n\nNo link: 1) baixe o PDF, 2) assine em assinador.iti.br com a sua conta gov.br, 3) envie o PDF assinado pelo mesmo link.\n\nSeja bem-vindo à família Danni's! 🚐💜`,
-        htmlBody: `<p>Olá, ${nome}!</p><p>Seu contrato do transporte escolar 2027 já está assinado pela Danni's Tur. Falta só você assinar pelo <b>gov.br</b> (é grátis).</p><p><a href="${link}">Abrir meu contrato</a></p><ol><li>Baixe o PDF</li><li>Assine em assinador.iti.br com a sua conta gov.br</li><li>Envie o PDF assinado pelo mesmo link</li></ol><p>Seja bem-vindo à família Danni's! 🚐💜</p>`});
+        body: `Olá, ${nome}!\n\nSeu contrato do transporte escolar 2027 já está assinado pela Danni's Tur. Falta só você assinar pelo gov.br (é grátis):\n${link}\n\nEntre com o seu CPF e a data de nascimento do seu filho(a). Depois: 1) baixe o PDF, 2) assine em assinador.iti.br com a sua conta gov.br, 3) envie o PDF assinado pelo mesmo link.\n\nSeja bem-vindo à família Danni's! 🚐💜`,
+        htmlBody: `<p>Olá, ${nome}!</p><p>Seu contrato do transporte escolar 2027 já está assinado pela Danni's Tur. Falta só você assinar pelo <b>gov.br</b> (é grátis).</p><p><a href="${link}">Abrir meu contrato</a> (entre com o seu CPF e a data de nascimento do seu filho(a))</p><ol><li>Baixe o PDF</li><li>Assine em assinador.iti.br com a sua conta gov.br</li><li>Envie o PDF assinado pelo mesmo link</li></ol><p>Seja bem-vindo à família Danni's! 🚐💜</p>`});
       email = true;
     } catch(e){}
   }

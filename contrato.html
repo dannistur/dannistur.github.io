@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=21">
+<link rel="stylesheet" href="estilo.css?v=22">
 <style>
 body{margin:0}
 .passos-gov{list-style:none;counter-reset:p;margin:0;padding:0;display:grid;gap:12px}
@@ -35,6 +35,7 @@ body{margin:0}
 .opcao p,.opcao ol{margin:0;font-size:15px}
 .opcao ol{padding-left:20px;display:grid;gap:4px}
 input[type=file]{width:100%;font-size:14px}
+.entrar{max-width:560px}
 .st-chip{font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;background:var(--roxo-claro);color:var(--roxo)}
 </style>
 </head>
@@ -45,7 +46,22 @@ input[type=file]{width:100%;font-size:14px}
     <span class="st-chip" id="chipSt">Contrato 2027</span>
   </header>
 
-  <div id="carregando" class="aviso-box espera">Carregando seu contrato…</div>
+  <form class="card entrar" id="fEntrar" novalidate>
+    <div class="titulo-sec">
+      <small>Ano letivo 2027</small>
+      <h2>Meu contrato</h2>
+      <p>Pra sua segurança, cada família só vê o próprio contrato. Confirme quem é você:</p>
+    </div>
+    <div class="grade">
+      <div class="campo"><label for="vCpf">CPF do responsável</label><input type="text" id="vCpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00"></div>
+      <div class="campo"><label for="vNasc">Data de nascimento do seu filho(a)</label><input type="date" id="vNasc"></div>
+    </div>
+    <p class="dica" style="margin:0">Tem mais de um filho na van? Pode usar a data de qualquer um deles.</p>
+    <p class="msg-err" id="vErr" role="alert"></p>
+    <button class="btn btn-pri" type="submit" id="vBtn">Ver meu contrato</button>
+  </form>
+
+  <div id="carregando" class="aviso-box espera" hidden>Carregando seu contrato…</div>
   <div id="erro" class="aviso-box erro" hidden></div>
 
   <section id="conteudo" hidden style="display:grid;gap:16px">
@@ -56,7 +72,7 @@ input[type=file]{width:100%;font-size:14px}
 
     <div id="stEspera" class="aviso-box espera" hidden>
       <b>Aguardando a Danni's Tur colocar o valor.</b>
-      <span>Assim que o contrato for liberado você recebe o aviso no WhatsApp e, por este mesmo link, pode imprimir ou assinar pelo gov.br.</span>
+      <span>Assim que o contrato for liberado você recebe o aviso no WhatsApp e, aqui em "Meu contrato", pode imprimir ou assinar pelo gov.br.</span>
     </div>
     <div id="stAssinado" class="aviso-box ok" hidden><b>Contrato assinado. Obrigado e bora pra 2027!</b><span>Guarde a sua cópia:</span><button class="btn btn-pri" type="button" id="btnCopia" style="justify-self:start">Salvar PDF / imprimir minha cópia</button></div>
     <div id="stImpresso" class="aviso-box ok" hidden><b>Combinado! Imprima, assine e entregue o contrato na van.</b><span>Se preferir, você ainda pode assinar pelo gov.br abaixo.</span></div>
@@ -96,25 +112,45 @@ input[type=file]{width:100%;font-size:14px}
 
 <div id="printArea"><p style="font:16px Arial;padding:40px;text-align:center">Este contrato ainda não foi liberado para impressão pela Danni's Tur.</p></div>
 
-<script src="comum.js?v=7"></script>
+<script src="comum.js?v=8"></script>
 <script>
 (function(){
   const $ = s => document.querySelector(s);
-  const {api, contratoHTML, esc, preparaImpressao} = DT;
+  const {api, contratoHTML, esc, preparaImpressao, maskCpf, cpfValido} = DT;
   const qs = new URLSearchParams(location.search);
-  const token = (qs.get("c") || (location.search.length > 1 && location.search.indexOf("=") < 0 ? decodeURIComponent(location.search.slice(1)) : "")).trim();
-  let fam = null, liberado = false;
+  /* links antigos com código (…/contrato?K7M2PX9Q) continuam valendo, mas também pedem CPF + nascimento */
+  let token = (qs.get("c") || (location.search.length > 1 && location.search.indexOf("=") < 0 ? decodeURIComponent(location.search.slice(1)) : "")).trim();
+  let fam = null, liberado = false, cpf = "", nasc = "";
+  const chave = () => ({token, cpf, nasc});   // vai junto em todo pedido ao servidor; nada fica salvo no celular
 
-  async function carregar(){
-    if (!token){ falha("Link incompleto. Abra o link que a Danni's Tur te mandou no WhatsApp."); return; }
+  $("#vCpf").addEventListener("input", e=>e.target.value = maskCpf(e.target.value));
+  $("#fEntrar").addEventListener("submit", async e=>{
+    e.preventDefault(); $("#vErr").textContent = "";
+    const c = $("#vCpf").value, n = $("#vNasc").value;
+    if (!cpfValido(c)){ $("#vErr").textContent = "Confira o CPF: algum número está errado."; $("#vCpf").focus(); return; }
+    if (!n){ $("#vErr").textContent = "Coloque a data de nascimento do seu filho(a)."; $("#vNasc").focus(); return; }
+    cpf = c; nasc = n; entrar();
+  });
+  async function entrar(){
+    const b = $("#vBtn"); b.disabled = true; b.textContent = "Procurando…";
     try{
-      const r = await api("ver", {token});
-      fam = r.familia; liberado = r.liberado; mostra();
+      if (!token){ const r = await api("buscar", {cpf, nasc}); token = r.token; }
+      const r = await api("ver", chave());
+      fam = r.familia; liberado = r.liberado;
+      $("#fEntrar").hidden = true; mostra();
     }catch(e){
-      falha(e.codigo==="sem_api" ? "O sistema de contratos ainda está sendo ligado. Tente mais tarde." : (e.codigo==="token" ? e.message : "Não consegui abrir o contrato agora. Confira a internet e recarregue a página."));
+      if (!qs.toString()) token = "";
+      $("#vErr").textContent = e.codigo==="sem_api" ? "O sistema de contratos ainda está sendo ligado. Tente mais tarde."
+        : (e.codigo==="nao_achou" || e.codigo==="limite" || e.codigo==="dados") ? e.message
+        : "Não consegui abrir agora. Confira a internet e tente de novo.";
     }
+    b.disabled = false; b.textContent = "Ver meu contrato";
   }
-  function falha(t){ $("#carregando").hidden = true; $("#erro").hidden = false; $("#erro").textContent = t; }
+  /* vindo direto da renovação: os dados que a família acabou de digitar entram sozinhos (uma vez só) */
+  try{
+    const v = JSON.parse(sessionStorage.getItem("dt-verif") || "null"); sessionStorage.removeItem("dt-verif");
+    if (v && v.cpf && v.nasc){ $("#vCpf").value = maskCpf(v.cpf); $("#vNasc").value = v.nasc; cpf = v.cpf; nasc = v.nasc; entrar(); }
+  }catch(e){}
 
   function mostra(){
     $("#carregando").hidden = true; $("#conteudo").hidden = false;
@@ -137,7 +173,7 @@ input[type=file]{width:100%;font-size:14px}
 
   async function imprimir(){
     if (!liberado) return;
-    try{ if (fam.status==="liberado"){ await api("vou_imprimir", {token}); fam.status="vai_entregar_impresso"; mostra(); } }catch(e){}
+    try{ if (fam.status==="liberado"){ await api("vou_imprimir", chave()); fam.status="vai_entregar_impresso"; mostra(); } }catch(e){}
     window.print();
   }
   $("#btnImprimir").onclick = imprimir;
@@ -175,13 +211,12 @@ input[type=file]{width:100%;font-size:14px}
     const b = $("#btnEnviar"); b.disabled = true; b.textContent = "Enviando…";
     try{
       const base64 = await new Promise((ok,err)=>{ const r = new FileReader(); r.onload = ()=>ok(String(r.result).split(",")[1]); r.onerror = err; r.readAsDataURL(f); });
-      await api("enviar_assinado", {token, base64, tipo:f.type || "application/pdf"});
+      await api("enviar_assinado", Object.assign(chave(), {base64, tipo:f.type || "application/pdf"}));
       fam.status = "assinado_online"; mostra(); window.scrollTo({top:0,behavior:"smooth"});
     }catch(e){ $("#envErr").textContent = e.message || "Não consegui enviar. Tente de novo."; }
     b.disabled = false; b.textContent = "Enviar contrato assinado";
   };
 
-  carregar();
 })();
 </script>
 </body>

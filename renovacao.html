@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=21">
+<link rel="stylesheet" href="estilo.css?v=22">
 <style>body{margin:0}</style>
 </head>
 <body>
@@ -361,9 +361,8 @@
     if (API){
       try{
         const r = await api("cadastrar", {dados: {...dados, tipo: NOVO ? "novo" : "renovacao", aparelho: navigator.userAgent.slice(0, 160)}});
-        const link = DT.linkContrato(r.token);
-        ls.set("dt-contrato", link);
-        $("#linkContrato").href = link; $("#linkContrato").hidden = false;
+        $("#linkContrato").href = "contrato"; $("#linkContrato").hidden = false;
+        $("#linkContrato").onclick = ()=>{ try{ sessionStorage.setItem("dt-verif", JSON.stringify({cpf:dados.cpf, nasc:dados.alunos[0].nasc})); }catch(e){} };
         $("#sucTxt").textContent = "Recebemos os seus dados. Logo a Danni's Tur confere e te manda no WhatsApp (e no e-mail, se informou) o contrato pra assinar pelo gov.br.";   // a Danni's Tur recebe o aviso no WhatsApp pelo servidor
         mostrar(4);
       }catch(e){

@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=21">
+<link rel="stylesheet" href="estilo.css?v=22">
 <style>
 body{margin:0}
 .pg{max-width:1080px;margin:0 auto;padding-block:18px 48px;display:grid;gap:16px}
@@ -236,7 +236,9 @@ body{margin:0}
 
   /* ---------- detalhe ---------- */
   let ops = ""; for (let k=INI;k<=FIM;k++) ops += `<option value="${k}">${nomeMes(k)}</option>`; $("#xIni").innerHTML = ops;
-  const linkContrato = f => DT.linkContrato(f.token);
+  /* a família abre o contrato em "Meu contrato" com o CPF dela + nascimento do filho: o link é o mesmo pra todos */
+  const linkContrato = f => new URL("contrato", location.href).href;
+  const comoAbrir = "\n\nÉ só entrar com o seu CPF e a data de nascimento do seu filho(a).";
   /* link do aviso do WhatsApp (…/admin.html#f=12): abre direto na família, com o cursor no valor */
   function abrePeloLink(){
     const m = location.hash.match(/^#f=(\d+)$/); if (!m) return;
@@ -275,7 +277,7 @@ body{margin:0}
     $("#bRecebido").hidden = !(f.status==="vai_entregar_impresso" || f.status==="liberado");
     $("#bCancelar").textContent = f.status==="cancelado" ? "Reativar esta renovação" : "Cancelar esta renovação";
     botaoVerde();
-    if (lib) $("#bZap").href = zapLink(f.celular, `Olá, ${f.responsavel.split(" ")[0]}! 🚐 ${f.assinatura ? "Seu contrato assinado do transporte escolar 2027 da Danni's Tur já está com o valor. Sua cópia:" : "Seu contrato do transporte escolar 2027 da Danni's Tur está pronto para assinatura:"}\n${linkContrato(f)}`);
+    if (lib) $("#bZap").href = zapLink(f.celular, `Olá, ${f.responsavel.split(" ")[0]}! 🚐 ${f.assinatura ? "Seu contrato assinado do transporte escolar 2027 da Danni's Tur já está com o valor. Sua cópia:" : "Seu contrato do transporte escolar 2027 da Danni's Tur está pronto para assinatura:"}\n${linkContrato(f)}${comoAbrir}`);
   }
   function valores(){
     const pv = num($("#xPv").value), n = +$("#xParc").value || 0;
@@ -299,7 +301,7 @@ body{margin:0}
   }
   $("#bLiberar").onclick = ()=>salvar(atual.status==="aguardando_valor" ? true : false);
   $("#bSalvar").onclick = ()=>salvar(false);
-  $("#bCopiar").onclick = async ()=>{ try{ await navigator.clipboard.writeText(linkContrato(atual)); $("#dOk").textContent = "Link copiado."; }catch(e){ $("#dOk").textContent = linkContrato(atual); } };
+  $("#bCopiar").onclick = async ()=>{ try{ await navigator.clipboard.writeText(linkContrato(atual)); $("#dOk").textContent = "Link copiado. A família entra com o CPF e a data de nascimento do filho(a)."; }catch(e){ $("#dOk").textContent = linkContrato(atual); } };
   $("#bImprimir").onclick = ()=>{ preparaImpressao(contratoHTML(comDannis(atual), valores())); window.print(); };
   async function mudaStatus(st){
     try{ const r = await api("admin_status", {senha, id:atual.id, status:st}); Object.assign(atual, r.familia); estado(); $("#dOk").textContent = "Atualizado."; }
@@ -339,7 +341,7 @@ body{margin:0}
     let motivo = !minhaAssinatura ? "Crie a sua assinatura no quadro “Minha assinatura” (na lista) pra liberar este botão." : !temValor ? "Coloque o valor e salve antes de enviar." : "";
     bt.setAttribute("aria-disabled", motivo ? "true" : "false");
     if (motivo){ dica.hidden = false; dica.textContent = motivo; }
-    bt.href = zapLink(f.celular, `Olá, ${f.responsavel.split(" ")[0]}! 🚐💜 Seu contrato do transporte escolar 2027 já está assinado pela Danni's Tur. Falta só você assinar pelo gov.br (é grátis). Abra o link, baixe o PDF, assine no gov.br e envie o PDF assinado pelo mesmo link:\n${linkContrato(f)}`);
+    bt.href = zapLink(f.celular, `Olá, ${f.responsavel.split(" ")[0]}! 🚐💜 Seu contrato do transporte escolar 2027 já está assinado pela Danni's Tur. Falta só você assinar pelo gov.br (é grátis). Abra o link, entre com o seu CPF e a data de nascimento do seu filho(a), baixe o PDF, assine no gov.br e envie o PDF assinado por lá mesmo:\n${linkContrato(f)}`);
   }
   $("#bAssinar").addEventListener("click", async e => {
     if ($("#bAssinar").getAttribute("aria-disabled") === "true"){ e.preventDefault(); return; }
