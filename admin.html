@@ -184,7 +184,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
 <div id="printArea"></div>
 
-<script src="comum.js?v=9"></script>
+<script src="comum.js?v=10"></script>
 <script src="cartao.js?v=1"></script>
 <script>
 (function(){
@@ -325,7 +325,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     $("#bRecebido").hidden = !(f.status==="vai_entregar_impresso" || f.status==="liberado");
     $("#bCancelar").textContent = f.status==="cancelado" ? "Reativar esta renovação" : "Cancelar esta renovação";
     const da = $("#dAceite");
-    if (da) da.outerHTML = f.aceiteEm ? (f.aceiteValido ? `<span id="dAceite" class="aceite-ok-adm">✅ <b>Aceito pela família no app</b> em ${fmtData(String(f.aceiteEm).slice(0,10))} às ${String(f.aceiteEm).slice(11,16)} · código ${esc(f.aceiteCodigo)}</span>` : `<span id="dAceite" class="aceite-velho">⚠️ <b>O contrato mudou depois do aceite</b> (ex.: valor). A família precisa aceitar de novo: o botão verde manda o link.</span>`) : `<span id="dAceite" class="aceite-velho">⏳ A família ainda não aceitou o contrato no app.</span>`;
+    if (da) da.outerHTML = f.aceiteEm ? `<span id="dAceite" class="aceite-ok-adm">✅ <b>Aceito pela família no app</b> em ${fmtData(String(f.aceiteEm).slice(0,10))} às ${String(f.aceiteEm).slice(11,16)} · código ${esc(f.aceiteCodigo)}${f.ajusteInfo ? `<br>✏️ ${esc(DT.fmtAjuste(f.ajusteInfo))}. Vai assim no PDF, e a mensagem pede pra família responder ACEITO.` : ""}</span>` : `<span id="dAceite" class="aceite-velho">⏳ A família ainda não aceitou o contrato no app.</span>`;
     botaoVerde(); preparaPdf();
     if (lib) $("#bZap").href = zapLink(f.celular, `Olá, ${f.responsavel.split(" ")[0]}! 🚐 ${f.assinatura ? "Seu contrato assinado do transporte escolar 2027 da Danni's Tur já está com o valor. Sua cópia:" : "Seu contrato do transporte escolar 2027 da Danni's Tur está pronto para assinatura:"}\n${linkContrato(f)}${comoAbrir}`);
   }
@@ -399,18 +399,18 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
   /* ---------- PDF do contrato pronto (aceite da família + assinatura da Danni's) no WhatsApp ---------- */
   let pdfPronto = null;   // {id, blob}
-  const msgPdf = f => `Olá, ${f.responsavel.split(" ")[0]}! 🚐💜 Segue o seu contrato do transporte escolar 2027 da Danni's Tur, com o seu aceite no app e a assinatura da Danni's. Guarde o arquivo.\n\nSe estiver tudo certo, responde *ACEITO* por aqui. Bem-vindo à família Danni's!`;
+  const msgPdf = f => `Olá, ${f.responsavel.split(" ")[0]}! 🚐💜 Segue o seu contrato do transporte escolar 2027 da Danni's Tur, com o seu aceite no app e a assinatura da Danni's. Guarde o arquivo.${f.ajusteInfo ? `\n\nComo combinamos, ajustamos o contrato: mensalidade de *R$ ${brl(num((f.valores||{}).mensalidade))}* (${(f.valores||{}).parcelas} parcelas).` : ""}\n\nSe estiver tudo certo, responde *ACEITO* por aqui. Bem-vindo à família Danni's!`;
   const contratoPronto = f => f && f.aceiteValido && f.assinadoDannisEm && (f.status === "assinado_online" || f.status === "recebido");
   async function preparaPdf(){
     const f = atual; $("#bPdf").hidden = !contratoPronto(f); $("#bPdfDica").hidden = true; if ($("#bPdf").hidden) return;
-    if (pdfPronto && pdfPronto.id === f.id) return;
+    if (pdfPronto && pdfPronto.id === f.id && pdfPronto.versao === f.versaoCodigo) return;
     const b = $("#bPdf"); b.disabled = true; b.textContent = "Preparando o PDF…";
-    try{ pdfPronto = {id: f.id, blob: await DT.contratoPDF(comDannis(f), f.valores)}; b.textContent = "📄 Mandar o contrato (PDF) no WhatsApp da família"; }
+    try{ pdfPronto = {id: f.id, versao: f.versaoCodigo, blob: await DT.contratoPDF(comDannis(f), f.valores)}; b.textContent = "📄 Mandar o contrato (PDF) no WhatsApp da família"; }
     catch(e){ pdfPronto = null; b.textContent = "Tentar gerar o PDF de novo"; $("#bPdfDica").hidden = false; $("#bPdfDica").textContent = "Não consegui gerar o PDF agora. Confira a internet e toque de novo."; }
     b.disabled = false;
   }
   $("#bPdf").addEventListener("click", async () => {
-    const f = atual; if (!pdfPronto || pdfPronto.id !== f.id){ await preparaPdf(); return; }
+    const f = atual; if (!pdfPronto || pdfPronto.id !== f.id || pdfPronto.versao !== f.versaoCodigo){ await preparaPdf(); return; }
     const arq = new File([pdfPronto.blob], DT.nomePDF(f), {type: "application/pdf"});
     if (navigator.canShare && navigator.canShare({files: [arq]})){
       try { await navigator.share({files: [arq], text: msgPdf(f)}); $("#dOk").textContent = "Contrato compartilhado."; return; }

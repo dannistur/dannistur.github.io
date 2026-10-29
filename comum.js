@@ -67,6 +67,10 @@
   const soDigitos = t => String(t||"").replace(/\D/g,"");
   const zapLink = (tel, texto) => { let n = soDigitos(tel); if (n.length<=11) n = "55"+n; return `https://wa.me/${n}?text=${encodeURIComponent(texto)}`; };
 
+  /* "Ajustado pela Danni's Tur em 2026-10-29T08:40:12 · ..." → "Ajustado pela Danni's Tur em 29/10/2026 às 08:40 · ..." */
+  const fmtAjuste = t => String(t || "").replace(/(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(:\d{2})?/, (_, d, h) => `${fmtData(d)} às ${h}`);
+  const valorAceito = f => f.aceiteValores && Number(f.aceiteValores.mensalidade) ? `R$ ${brl(Number(f.aceiteValores.mensalidade))} por mês` : "";
+
   /* ---------- contrato (um por família, todos os irmãos) ---------- */
   function contratoHTML(f, x){
     x = x || {};
@@ -126,7 +130,8 @@
         <b>REGISTRO DO ACEITE ELETRÔNICO (Cláusula 13)</b>
         <span>Aceito por <b>${esc(f.responsavel)}</b>, CPF ${esc(f.cpf)}, em ${fmtData(String(f.aceiteEm).slice(0,10))} às ${String(f.aceiteEm).slice(11,19)} (horário de Brasília), no aplicativo da Danni's Tur, após identificação por CPF e data de nascimento do aluno.</span>
         ${f.aceiteInfo ? `<span>Aparelho: ${esc(String(f.aceiteInfo).split(" · ").slice(2).join(" · ") || "-")}</span>` : ""}
-        <span>Código de integridade: <b class="ct-codigo">${esc(f.aceiteCodigo || "")}</b>. O código muda se qualquer dado, valor ou cláusula for alterado depois do aceite.</span>
+        <span>Código de integridade do aceite: <b class="ct-codigo">${esc(f.aceiteCodigo || "")}</b>${valorAceito(f) ? ` (versão aceita: ${valorAceito(f)})` : ""}.</span>
+        ${f.ajusteInfo ? `<span><b>${esc(fmtAjuste(f.ajusteInfo))}.</b> Versão final enviada ao CONTRATANTE pelo WhatsApp. Código desta versão: <b class="ct-codigo">${esc(f.versaoCodigo || "")}</b>.</span>` : ""}
       </div>` : ""}
     </article>`;
   }
@@ -168,9 +173,14 @@
       ["p", `Aceito por ${f.responsavel}, CPF ${f.cpf}, em ${data} às ${hora} (horário de Brasília), no aplicativo da Danni's Tur, após identificação por CPF e data de nascimento do aluno.`],
       ["p", `Alunos: ${(f.alunos || []).map(a => a.nome).join(", ")}.`],
       ["p", `Aparelho utilizado: ${aparelho}`],
-      ["c", `Código de integridade: ${f.aceiteCodigo || ""}`],
-      ["p", "O código de integridade é calculado a partir das partes, dos alunos, do endereço, da vigência, dos valores e da versão das cláusulas. Ele muda se qualquer um desses dados for alterado depois do aceite."]
+      ["c", `Código de integridade do aceite: ${f.aceiteCodigo || ""}${valorAceito(f) ? `  (versão aceita: ${valorAceito(f)})` : ""}`]
     ];
+    if (f.ajusteInfo){
+      linhas.push(["c", "AJUSTE DEPOIS DO ACEITE"]);
+      linhas.push(["p", `${fmtAjuste(f.ajusteInfo)}. Esta versão final, com o ajuste, foi enviada ao CONTRATANTE pelo WhatsApp para conferência.`]);
+      linhas.push(["c", `Código de integridade desta versão: ${f.versaoCodigo || ""}`]);
+    }
+    linhas.push(["p", "O código de integridade é calculado a partir das partes, dos alunos, do endereço, da vigência, dos valores e da versão das cláusulas. Ele muda se qualquer um desses dados for alterado."]);
     const blocos = linhas.map(([tipo, txt]) => {
       pdf.setFont("helvetica", tipo === "p" ? "normal" : "bold"); pdf.setFontSize(tipo === "t" ? 12 : 10);
       return {tipo, partes: pdf.splitTextToSize(txt, W - 12)};
@@ -288,7 +298,7 @@
   }
 
   window.DT = {padAssinatura, API, ZAP_DANNIS, CONTRATADO, ESCOLAS, MESES, INI, FIM, nomeMes, esc, fmtData, brl, num, hojeISO, vigencia, idade,
-               maskCpf, maskTel, cpfValido, soDigitos, zapLink, contratoHTML, contratoPDF, nomePDF, carregaPdfLib, api, preparaImpressao, linkContrato, musicaFundo};
+               maskCpf, maskTel, cpfValido, soDigitos, zapLink, contratoHTML, contratoPDF, nomePDF, carregaPdfLib, fmtAjuste, api, preparaImpressao, linkContrato, musicaFundo};
   if (!/admin\.html/.test(location.pathname)){
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", musicaFundo); else musicaFundo();
   }

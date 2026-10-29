@@ -12,7 +12,7 @@
 const ABA = "Renovações";
 const COLS = ["id","token","criado_em","status","responsavel","cpf","rg","celular","fone_casa","outro_fone","email",
               "rua","bairro","cidade","cep","alunos_texto","alunos_json","obs","data_cadastro",
-              "inicio_idx","mensalidade","parcelas","total","data_contrato","liberado_em","assinado_em","arquivo_url","observacao_interna","tipo","assinatura","assinatura_info","assinado_dannis_em","aceite_em","aceite_info","aceite_hash"];
+              "inicio_idx","mensalidade","parcelas","total","data_contrato","liberado_em","assinado_em","arquivo_url","observacao_interna","tipo","assinatura","assinatura_info","assinado_dannis_em","aceite_em","aceite_info","aceite_hash","aceite_valores","ajuste_info"];
 const STATUS = {AGUARDANDO:"aguardando_valor", LIBERADO:"liberado", ASSINADO:"assinado_online", IMPRESSO:"vai_entregar_impresso", RECEBIDO:"recebido", CANCELADO:"cancelado"};
 const FUSO = "America/Sao_Paulo";
 const SITE = "https://murilodannis123-lang.github.io/dannis-tur/";
@@ -135,9 +135,10 @@ function hashContrato_(o){
   return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, txt, Utilities.Charset.UTF_8).map(b => ((b + 256) % 256).toString(16).padStart(2, "0")).join("");
 }
 function codigoIntegridade_(h){ return String(h || "").slice(0, 16).toUpperCase().replace(/(.{4})(?=.)/g, "$1-"); }
-function aceiteValido_(o){ return !!(o.aceite_em && o.aceite_hash && o.aceite_hash === hashContrato_(o)); }
+function aceiteOriginal_(o){ return !!(o.aceite_em && o.aceite_hash && o.aceite_hash === hashContrato_(o)); }   // nada mudou desde o aceite
+const valoresDe_ = o => ({ini: Math.round(Number(o.inicio_idx||0)), mensalidade: Number(o.mensalidade||0), parcelas: Math.round(Number(o.parcelas||0)), total: Number(o.total||0)});
 function registroAceite_(o, aparelho){
-  return {aceite_em: agora_(), aceite_hash: hashContrato_(o),
+  return {aceite_em: agora_(), aceite_hash: hashContrato_(o), aceite_valores: JSON.stringify(valoresDe_(o)), ajuste_info: "",
           aceite_info: "Aceite eletrônico no app · CPF " + String(o.cpf||"") + " · " + limpa_(aparelho, 160)};
 }
 /* "Meu contrato": a família aceita (ou aceita de novo, se o valor mudou) com um toque */
@@ -148,7 +149,7 @@ function aceitar_(req){
     if (r.obj.status === STATUS.CANCELADO) throw erro_("Este contrato está cancelado.");
     if (!(Number(r.obj.mensalidade) > 0)) throw erro_("O contrato ainda está sem valor. A Danni's Tur vai te avisar.");
     if (req.aceite !== true) throw erro_("Marque que leu e aceita o contrato.");
-    if (!aceiteValido_(r.obj)){
+    if (!r.obj.aceite_em){
       const mud = registroAceite_(r.obj, req.aparelho);
       if (r.obj.assinado_dannis_em && r.obj.status === STATUS.LIBERADO) mud.status = STATUS.ASSINADO;   // a Danni's já tinha assinado: contrato completo
       atualiza_(r.linha, mud);
@@ -216,7 +217,7 @@ function assinarDannis_(req){
   if (!cfg_("assinatura_dannis")) throw erro_("Crie a sua assinatura primeiro (quadro 'Minha assinatura').");
   if (!(Number(r.obj.mensalidade) > 0)) throw erro_("Coloque o valor e salve antes de enviar.");
   if (r.obj.status === STATUS.CANCELADO) throw erro_("Este contrato está cancelado.");
-  const aceito = aceiteValido_(r.obj);
+  const aceito = !!r.obj.aceite_em;
   const mud = {assinado_dannis_em: r.obj.assinado_dannis_em || agora_()};
   if (r.obj.status === STATUS.AGUARDANDO || (aceito && r.obj.status === STATUS.LIBERADO)) mud.status = (r.obj.assinatura || aceito) ? STATUS.ASSINADO : STATUS.LIBERADO;
   if (!r.obj.liberado_em) mud.liberado_em = agora_();
@@ -247,10 +248,19 @@ function salvar_(req){
       mud.liberado_em = agora_();
     }
     atualiza_(r.linha, mud);
-    // mudou o valor/vigência depois do aceite: o aceite antigo não vale pra esse contrato novo
+    // ajuste depois do aceite (normalmente o valor): o contrato continua pronto e o ajuste fica registrado no PDF
     const depois = porId_(req.id).obj;
-    if (depois.aceite_em && !aceiteValido_(depois) && depois.status === STATUS.ASSINADO && !depois.arquivo_url && !depois.assinatura){
-      atualiza_(r.linha, {status: STATUS.LIBERADO});
+    if (depois.aceite_em){
+      let antes = {}; try { antes = JSON.parse(depois.aceite_valores || "{}"); } catch(e){}
+      const agoraV = valoresDe_(depois), partes = [];
+      if (Number(antes.mensalidade) !== agoraV.mensalidade) partes.push(`mensalidade de R$ ${brl_(antes.mensalidade||0)} para R$ ${brl_(agoraV.mensalidade)}`);
+      if (Number(antes.parcelas) !== agoraV.parcelas) partes.push(`parcelas de ${antes.parcelas||0} para ${agoraV.parcelas}`);
+      if (Math.round(Number(antes.total||0)*100) !== Math.round(agoraV.total*100)) partes.push(`total de R$ ${brl_(antes.total||0)} para R$ ${brl_(agoraV.total)}`);
+      if (Number(antes.ini) !== agoraV.ini) partes.push("início da vigência");
+      const atual = String(depois.ajuste_info || ""), desc = partes.join(" · ") || "dados do contrato";
+      // mantém a data do ajuste se nada mudou desde o último ajuste; volta a vazio se voltou ao que foi aceito
+      const info = aceiteOriginal_(depois) ? "" : (atual.endsWith(desc) ? atual : `Ajustado pela Danni's Tur em ${agora_()} · ${desc}`);
+      if (info !== atual) atualiza_(r.linha, {ajuste_info: info});
     }
     return {ok:true, familia: completo_(porId_(req.id).obj)};
   } finally { lock.releaseLock(); }
@@ -405,7 +415,9 @@ function publico_(o){
     id:o.id, status:o.status, responsavel:o.responsavel, cpf:o.cpf, rg:o.rg, celular:o.celular, foneCasa:o.fone_casa, outroFone:o.outro_fone, email:o.email,
     rua:o.rua, bairro:o.bairro, cidade:o.cidade, cep:o.cep, alunos, obs:o.obs, dataCadastro:String(o.data_cadastro||"").slice(0,10), tipo:o.tipo || "renovacao",
     assinatura:o.assinatura || "", assinadoEm:o.assinado_em || "",
-    aceiteEm:o.aceite_em || "", aceiteInfo:o.aceite_info || "", aceiteCodigo: codigoIntegridade_(o.aceite_hash), aceiteValido: aceiteValido_(o),
+    aceiteEm:o.aceite_em || "", aceiteInfo:o.aceite_info || "", aceiteCodigo: codigoIntegridade_(o.aceite_hash), aceiteValido: !!o.aceite_em,
+    aceiteOriginal: aceiteOriginal_(o), versaoCodigo: codigoIntegridade_(hashContrato_(o)), ajusteInfo: o.ajuste_info || "",
+    aceiteValores: (() => { try { return JSON.parse(o.aceite_valores || "null"); } catch(e){ return null; } })(),
     valores:{ini:o.inicio_idx, mensalidade:o.mensalidade, parcelas:o.parcelas, total:o.total, dataContrato:String(o.data_contrato||"").slice(0,10)}
   };
 }
