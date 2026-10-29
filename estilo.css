@@ -186,6 +186,16 @@ dialog#dlg::backdrop{background:rgba(31,26,33,.6)}
 .ct-ass{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:26px;text-align:center;font-size:12px}
 .ct-ass div{border-top:1px solid #111;padding-top:6px}
 .ct-frase{text-align:center;font-style:italic;color:#555;margin-top:10px!important}
+.ct-registro{display:grid;gap:4px;border:1.5px solid #1d8a4e;background:#f1faf4;border-radius:8px;padding:10px 12px;font-size:11.5px;color:#163;break-inside:avoid}
+.ct-registro > b{font-size:12px;letter-spacing:.04em;color:#14633a}
+.ct-codigo{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.04em}
+/* aceite no fim do cadastro */
+.contrato-ler{max-height:min(62vh,560px);overflow:auto;border:1.5px solid var(--linha);border-radius:12px;background:#fff;-webkit-overflow-scrolling:touch}
+.contrato-ler .contrato{padding:18px 16px 22px}
+.aceite-box{display:grid;gap:12px;background:#f1faf4;border:1.5px solid #bfe5cc;border-radius:14px;padding:14px 16px}
+.aceite-box .check{font-weight:600}
+.aceito-ok{display:grid;gap:4px;background:#e3f6ea;color:#14633a;border-radius:12px;padding:12px 14px;font-weight:600;text-align:left}
+.aceito-ok .ct-codigo{font-weight:800}
 #printArea{display:none}
 @media print{
   @page{size:A4;margin:12mm}
@@ -374,3 +384,10 @@ img.van{height:auto}
 .lb-ant{left:10px;top:50%;transform:translateY(-50%)}
 .lb-prox{right:10px;top:50%;transform:translateY(-50%)}
 .lb-cont{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;opacity:.8}
+
+.btn-verde{background:#1fa855;color:#fff;border:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;font-weight:800}
+.btn-verde:hover{background:#178a45}
+.btn-verde[disabled]{opacity:.45;cursor:not-allowed}
+/* PDF gerado no navegador: texto alinhado à esquerda (o justificado sobrepõe letras) e registro do aceite numa página inteira */
+.contrato.pdf p{text-align:left}
+.contrato.pdf .ct-registro{margin-top:4px}

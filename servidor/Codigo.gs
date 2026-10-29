@@ -12,7 +12,7 @@
 const ABA = "Renovações";
 const COLS = ["id","token","criado_em","status","responsavel","cpf","rg","celular","fone_casa","outro_fone","email",
               "rua","bairro","cidade","cep","alunos_texto","alunos_json","obs","data_cadastro",
-              "inicio_idx","mensalidade","parcelas","total","data_contrato","liberado_em","assinado_em","arquivo_url","observacao_interna","tipo","assinatura","assinatura_info","assinado_dannis_em"];
+              "inicio_idx","mensalidade","parcelas","total","data_contrato","liberado_em","assinado_em","arquivo_url","observacao_interna","tipo","assinatura","assinatura_info","assinado_dannis_em","aceite_em","aceite_info","aceite_hash"];
 const STATUS = {AGUARDANDO:"aguardando_valor", LIBERADO:"liberado", ASSINADO:"assinado_online", IMPRESSO:"vai_entregar_impresso", RECEBIDO:"recebido", CANCELADO:"cancelado"};
 const FUSO = "America/Sao_Paulo";
 const SITE = "https://murilodannis123-lang.github.io/dannis-tur/";
@@ -30,6 +30,7 @@ function doPost(e){
       case "cadastrar":        return json_(cadastrar_(req.dados));
       case "buscar":           return json_(buscar_(req));
       case "ver":              return json_(ver_(req));
+      case "aceitar":          return json_(aceitar_(req));
       case "enviar_assinado":  return json_(enviarAssinado_(req));
       case "vou_imprimir":     return json_(vouImprimir_(req));
       case "admin_login":      admin_(req); return json_({ok:true});
@@ -74,9 +75,13 @@ function cadastrar_(d){
       Object.assign(linha, {inicio_idx: ini, mensalidade: mens, parcelas: parc, total: Math.round(mens * parc * 100) / 100, data_contrato: hoje_()});
       if (ass) Object.assign(linha, {liberado_em: agora_(), status: STATUS.ASSINADO});   // fluxo antigo
     }
+    // aceite eletrônico (cláusula 13): a família leu o contrato completo e tocou em "Aceitar"
+    if (temValor && d.aceite === true && !ass){
+      Object.assign(linha, registroAceite_(linha, d.aparelho));
+    }
     sh.appendRow(COLS.map(c => linha[c] == null ? "" : linha[c]));
-    avisaDono_(`${linha.tipo === "novo" ? "🆕 *Contrato novo 2027*" : "🚐 *Nova renovação 2027*"} (nº ${id})\n${linha.responsavel} – ${linha.celular}\n${temValor ? `💰 R$ ${brl_(linha.mensalidade)}/mês × ${linha.parcelas} = R$ ${brl_(linha.total)}\n` : "💰 Sem valor – colocar no admin\n"}${alunos.map(a=>`• ${a.nome} – ${a.escola}`).join("\n")}\n\n👉 Conferir o valor e tocar no botão verde (a família assina pelo gov.br):\n${SITE}admin.html#f=${id}`);
-    return {ok:true, token, id};
+    avisaDono_(`${linha.tipo === "novo" ? "🆕 *Contrato novo 2027*" : "🚐 *Nova renovação 2027*"} (nº ${id})\n${linha.responsavel} – ${linha.celular}\n${temValor ? `💰 R$ ${brl_(linha.mensalidade)}/mês × ${linha.parcelas} = R$ ${brl_(linha.total)}\n` : "💰 Sem valor – colocar no admin\n"}${alunos.map(a=>`• ${a.nome} – ${a.escola}`).join("\n")}\n\n${linha.aceite_em ? "✅ A família já aceitou o contrato no app." : "⏳ A família ainda não aceitou o contrato."}\n👉 Conferir o valor e tocar no botão verde pra mandar a via final no WhatsApp:\n${SITE}admin.html#f=${id}`);
+    return {ok:true, token, id, aceite: linha.aceite_em ? {em: linha.aceite_em, codigo: codigoIntegridade_(linha.aceite_hash)} : null};
   } finally { lock.releaseLock(); }
 }
 
@@ -113,6 +118,44 @@ function verificado_(req){
   const r = porToken_(req.token);
   if (!r || !confere_(r.obj, req.cpf, req.nasc)){ falhou(); throw erro_(MSG_NAO_ACHEI, "nao_achou"); }
   return r;
+}
+
+/* ===================== aceite eletrônico ===================== */
+/* versão do texto das cláusulas: mude quando o contrato mudar, pra que o código de integridade acompanhe */
+const CLAUSULAS_VERSAO = "2027-v2-aceite";
+/* "impressão digital" do que a família aceitou: partes, alunos, endereço, vigência e valores. Se algo mudar depois, o código não bate. */
+function hashContrato_(o){
+  let alunos = []; try { alunos = JSON.parse(o.alunos_json || "[]"); } catch(e){}
+  const n2 = v => (Math.round(Number(v || 0) * 100) / 100).toFixed(2), ni = v => String(Math.round(Number(v || 0)));
+  const txt = JSON.stringify([CLAUSULAS_VERSAO,
+    String(o.responsavel||"").trim(), String(o.cpf||"").replace(/\D/g,""), String(o.rg||"").trim(),
+    String(o.rua||"").trim(), String(o.bairro||"").trim(), String(o.cidade||"").trim(), String(o.cep||"").replace(/\D/g,""),
+    alunos.map(a => [String(a.nome||"").trim(), String(a.nasc||"").slice(0,10), String(a.escola||"").trim(), String(a.periodo||""), String(a.trajeto||"")]),
+    ni(o.inicio_idx), n2(o.mensalidade), ni(o.parcelas), n2(o.total)]);
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, txt, Utilities.Charset.UTF_8).map(b => ((b + 256) % 256).toString(16).padStart(2, "0")).join("");
+}
+function codigoIntegridade_(h){ return String(h || "").slice(0, 16).toUpperCase().replace(/(.{4})(?=.)/g, "$1-"); }
+function aceiteValido_(o){ return !!(o.aceite_em && o.aceite_hash && o.aceite_hash === hashContrato_(o)); }
+function registroAceite_(o, aparelho){
+  return {aceite_em: agora_(), aceite_hash: hashContrato_(o),
+          aceite_info: "Aceite eletrônico no app · CPF " + String(o.cpf||"") + " · " + limpa_(aparelho, 160)};
+}
+/* "Meu contrato": a família aceita (ou aceita de novo, se o valor mudou) com um toque */
+function aceitar_(req){
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const r = verificado_(req);
+    if (r.obj.status === STATUS.CANCELADO) throw erro_("Este contrato está cancelado.");
+    if (!(Number(r.obj.mensalidade) > 0)) throw erro_("O contrato ainda está sem valor. A Danni's Tur vai te avisar.");
+    if (req.aceite !== true) throw erro_("Marque que leu e aceita o contrato.");
+    if (!aceiteValido_(r.obj)){
+      const mud = registroAceite_(r.obj, req.aparelho);
+      if (r.obj.assinado_dannis_em && r.obj.status === STATUS.LIBERADO) mud.status = STATUS.ASSINADO;   // a Danni's já tinha assinado: contrato completo
+      atualiza_(r.linha, mud);
+      avisaDono_(`✅ *Contrato aceito no app* (nº ${r.obj.id})\n${r.obj.responsavel}\nAbra a Área Danni's pra mandar a via final no WhatsApp:\n${SITE}admin.html#f=${r.obj.id}`);
+    }
+    return ver_(req);
+  } finally { lock.releaseLock(); }
 }
 
 function ver_(req){
@@ -173,12 +216,13 @@ function assinarDannis_(req){
   if (!cfg_("assinatura_dannis")) throw erro_("Crie a sua assinatura primeiro (quadro 'Minha assinatura').");
   if (!(Number(r.obj.mensalidade) > 0)) throw erro_("Coloque o valor e salve antes de enviar.");
   if (r.obj.status === STATUS.CANCELADO) throw erro_("Este contrato está cancelado.");
+  const aceito = aceiteValido_(r.obj);
   const mud = {assinado_dannis_em: r.obj.assinado_dannis_em || agora_()};
-  if (r.obj.status === STATUS.AGUARDANDO) mud.status = r.obj.assinatura ? STATUS.ASSINADO : STATUS.LIBERADO;
+  if (r.obj.status === STATUS.AGUARDANDO || (aceito && r.obj.status === STATUS.LIBERADO)) mud.status = (r.obj.assinatura || aceito) ? STATUS.ASSINADO : STATUS.LIBERADO;
   if (!r.obj.liberado_em) mud.liberado_em = agora_();
   atualiza_(r.linha, mud);
   let email = false;
-  if (r.obj.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r.obj.email)){
+  if (!aceito && r.obj.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r.obj.email)){   // com aceite, a via final vai em PDF pelo WhatsApp
     try {
       const link = `${SITE}contrato`, nome = String(r.obj.responsavel).split(" ")[0];
       MailApp.sendEmail({to: r.obj.email, name: "Danni's Tur", subject: "Seu contrato Danni's Tur 2027 – falta só a sua assinatura",
@@ -203,6 +247,11 @@ function salvar_(req){
       mud.liberado_em = agora_();
     }
     atualiza_(r.linha, mud);
+    // mudou o valor/vigência depois do aceite: o aceite antigo não vale pra esse contrato novo
+    const depois = porId_(req.id).obj;
+    if (depois.aceite_em && !aceiteValido_(depois) && depois.status === STATUS.ASSINADO && !depois.arquivo_url && !depois.assinatura){
+      atualiza_(r.linha, {status: STATUS.LIBERADO});
+    }
     return {ok:true, familia: completo_(porId_(req.id).obj)};
   } finally { lock.releaseLock(); }
 }
@@ -356,6 +405,7 @@ function publico_(o){
     id:o.id, status:o.status, responsavel:o.responsavel, cpf:o.cpf, rg:o.rg, celular:o.celular, foneCasa:o.fone_casa, outroFone:o.outro_fone, email:o.email,
     rua:o.rua, bairro:o.bairro, cidade:o.cidade, cep:o.cep, alunos, obs:o.obs, dataCadastro:String(o.data_cadastro||"").slice(0,10), tipo:o.tipo || "renovacao",
     assinatura:o.assinatura || "", assinadoEm:o.assinado_em || "",
+    aceiteEm:o.aceite_em || "", aceiteInfo:o.aceite_info || "", aceiteCodigo: codigoIntegridade_(o.aceite_hash), aceiteValido: aceiteValido_(o),
     valores:{ini:o.inicio_idx, mensalidade:o.mensalidade, parcelas:o.parcelas, total:o.total, dataContrato:String(o.data_contrato||"").slice(0,10)}
   };
 }

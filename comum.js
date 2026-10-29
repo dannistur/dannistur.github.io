@@ -113,16 +113,78 @@
       <p class="ct-cl"><b>Cláusula 10.</b> O cancelamento do transporte implicará em multa de 2 (duas) mensalidades vigentes por parte do contratante; indicando outro aluno, e esse aluno fechar, ficará isento da multa. No caso de a quebra ser por parte do contratado, este irá pagar o valor de uma mensalidade ou terá que disponibilizar outro transporte para o contratante.</p>
       <p class="ct-cl"><b>Cláusula 11.</b> Os meses de férias serão cobrados integralmente conforme as parcelas, independentemente do mês contratado (não trabalhamos em clube de férias).</p>
       <p class="ct-cl"><b>Cláusula 12.</b> Falta do aluno por doenças, viagens, passeios ou motivos particulares não gera desconto na mensalidade, pois a vaga permanecerá reservada e o transporte rodando normalmente.</p>
-      <p class="ct-cl"><b>Cláusula 13.</b> Fica eleito o foro da Comarca de Sumaré, com prevalência sobre qualquer outro, por mais privilegiado que seja, para dirimir todas as dúvidas que possam advir de qualquer cláusula deste contrato. E, por estarem assim justos e contratados e de pleno acordo com todas as cláusulas estipuladas, assinam o presente instrumento particular em duas vias de igual teor e forma e sem rasura.</p>
+      <p class="ct-cl"><b>Cláusula 13.</b> As partes admitem como válida, nos termos do <span style="white-space:nowrap">art. 10, §2º,</span> da <span style="white-space:nowrap">Medida Provisória nº 2.200-2/2001</span>, a contratação por aceite eletrônico no aplicativo da Danni's Tur, com identificação do CONTRATANTE por CPF e data de nascimento do aluno e registro de data, hora e aparelho utilizado.</p>
+      <p class="ct-cl"><b>Cláusula 14.</b> Fica eleito o foro da Comarca de Sumaré, com prevalência sobre qualquer outro, por mais privilegiado que seja, para dirimir todas as dúvidas que possam advir de qualquer cláusula deste contrato. E, por estarem assim justos e contratados e de pleno acordo com todas as cláusulas estipuladas, assinam o presente instrumento particular em duas vias de igual teor e forma e sem rasura.</p>
       <p>${dataExtenso(x.dataContrato)}</p>
       <p><b>Ciente e de acordo,</b></p>
       <div class="ct-ass${f.assinatura || f.assinaturaDannis ? " assinado" : ""}">
-        <div>${f.assinatura && /^data:image\/(png|jpeg);base64,/.test(f.assinatura) ? `<img class="ct-assinatura" src="${f.assinatura}" alt="Assinatura de ${esc(f.responsavel)}">` : ""}CONTRATANTE<br><b>${esc(f.responsavel)}</b><br>CPF ${esc(f.cpf)}<br>Reconheço e pagarei a dívida representada.${f.assinatura ? `<br><small class="ct-ass-info">Assinado eletronicamente na tela${f.assinadoEm ? ` em ${fmtData(String(f.assinadoEm).slice(0,10))} às ${String(f.assinadoEm).slice(11,16)}` : ""}</small>` : ""}</div>
+        <div>${f.assinatura && /^data:image\/(png|jpeg);base64,/.test(f.assinatura) ? `<img class="ct-assinatura" src="${f.assinatura}" alt="Assinatura de ${esc(f.responsavel)}">` : ""}CONTRATANTE<br><b>${esc(f.responsavel)}</b><br>CPF ${esc(f.cpf)}<br>Reconheço e pagarei a dívida representada.${f.aceiteValido && f.aceiteEm ? `<br><small class="ct-ass-info">Aceito eletronicamente no app em ${fmtData(String(f.aceiteEm).slice(0,10))} às ${String(f.aceiteEm).slice(11,16)}</small>` : ""}${f.assinatura ? `<br><small class="ct-ass-info">Assinado eletronicamente na tela${f.assinadoEm ? ` em ${fmtData(String(f.assinadoEm).slice(0,10))} às ${String(f.assinadoEm).slice(11,16)}` : ""}</small>` : ""}</div>
         <div>${f.assinaturaDannis && /^data:image\/(png|jpeg);base64,/.test(f.assinaturaDannis) ? `<img class="ct-assinatura" src="${f.assinaturaDannis}" alt="Assinatura da Danni's Tur">` : ""}CONTRATADO<br><b>${CONTRATADO.razao}</b><br>${CONTRATADO.fantasia} · CNPJ ${CONTRATADO.cnpj}${f.assinaturaDannis && f.assinadoDannisEm ? `<br><small class="ct-ass-info">Assinado eletronicamente em ${fmtData(String(f.assinadoDannisEm).slice(0,10))} às ${String(f.assinadoDannisEm).slice(11,16)}</small>` : ""}</div>
       </div>
       <p class="ct-frase">“A boa reputação vale mais que grandes riquezas.”</p>
+      ${f.aceiteValido && f.aceiteEm ? `<div class="ct-registro">
+        <b>REGISTRO DO ACEITE ELETRÔNICO (Cláusula 13)</b>
+        <span>Aceito por <b>${esc(f.responsavel)}</b>, CPF ${esc(f.cpf)}, em ${fmtData(String(f.aceiteEm).slice(0,10))} às ${String(f.aceiteEm).slice(11,19)} (horário de Brasília), no aplicativo da Danni's Tur, após identificação por CPF e data de nascimento do aluno.</span>
+        ${f.aceiteInfo ? `<span>Aparelho: ${esc(String(f.aceiteInfo).split(" · ").slice(2).join(" · ") || "-")}</span>` : ""}
+        <span>Código de integridade: <b class="ct-codigo">${esc(f.aceiteCodigo || "")}</b>. O código muda se qualquer dado, valor ou cláusula for alterado depois do aceite.</span>
+      </div>` : ""}
     </article>`;
   }
+
+  /* PDF do contrato (Blob), usado no "Meu contrato" e no botão verde da Área Danni's */
+  function carregaPdfLib(){
+    if (window.html2pdf) return Promise.resolve();
+    return new Promise((ok, erro) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"; sc.onload = ok; sc.onerror = erro; document.head.appendChild(sc); });
+  }
+  async function contratoPDF(f, x){
+    await carregaPdfLib();
+    const caixa = document.createElement("div");
+    // fica no canto da tela, atrás do conteúdo (z-index negativo): longe da tela o gerador "fotografa" cortado
+    caixa.style.cssText = "position:fixed;left:0;top:0;width:720px;background:#fff;z-index:-1;pointer-events:none";
+    caixa.className = "pdf-gerar";
+    caixa.innerHTML = contratoHTML(f, x);
+    caixa.firstElementChild.classList.add("pdf");
+    const reg = caixa.querySelector(".ct-registro"); if (reg) reg.remove();   // o registro do aceite vai numa página própria, desenhada abaixo
+    document.body.appendChild(caixa);
+    try{
+      const imgs = [...caixa.querySelectorAll("img")].map(i => i.complete ? null : new Promise(r => { i.onload = i.onerror = r; })).filter(Boolean);
+      await Promise.all(imgs);
+      const pdf = await html2pdf().set({margin:[10,12,10,12], image:{type:"jpeg", quality:0.92}, html2canvas:{scale:2, useCORS:true, backgroundColor:"#ffffff", scrollX:0, scrollY:0, x:0, y:0, windowWidth:760, width:720},
+        jsPDF:{unit:"mm", format:"a4", orientation:"portrait"}, pagebreak:{mode:["css"], avoid:[".ct-cl",".ct-ass","h4"]}}).from(caixa.firstElementChild).toPdf().get("pdf");
+      if (f.aceiteValido && f.aceiteEm) paginaRegistro(pdf, f);
+      return pdf.output("blob");
+    } finally { caixa.remove(); }
+  }
+  /* página final do PDF: registro do aceite eletrônico (texto de verdade, dá pra copiar e pesquisar) */
+  function paginaRegistro(pdf, f){
+    const d = String(f.aceiteEm), data = fmtData(d.slice(0,10)), hora = d.slice(11,19);
+    const aparelho = String(f.aceiteInfo || "").split(" · ").slice(2).join(" · ") || "-";
+    pdf.addPage();
+    const L = 16, W = 210 - 2 * L; let y = 22;
+    pdf.setDrawColor(29, 138, 78); pdf.setFillColor(241, 250, 244);
+    const linhas = [
+      ["t", "REGISTRO DO ACEITE ELETRÔNICO (Cláusula 13)"],
+      ["p", `Contrato de prestação de serviço de transporte escolar – ano letivo 2027 – ${CONTRATADO.razao} (${CONTRATADO.fantasia}), CNPJ ${CONTRATADO.cnpj}.`],
+      ["p", `Aceito por ${f.responsavel}, CPF ${f.cpf}, em ${data} às ${hora} (horário de Brasília), no aplicativo da Danni's Tur, após identificação por CPF e data de nascimento do aluno.`],
+      ["p", `Alunos: ${(f.alunos || []).map(a => a.nome).join(", ")}.`],
+      ["p", `Aparelho utilizado: ${aparelho}`],
+      ["c", `Código de integridade: ${f.aceiteCodigo || ""}`],
+      ["p", "O código de integridade é calculado a partir das partes, dos alunos, do endereço, da vigência, dos valores e da versão das cláusulas. Ele muda se qualquer um desses dados for alterado depois do aceite."]
+    ];
+    const blocos = linhas.map(([tipo, txt]) => {
+      pdf.setFont("helvetica", tipo === "p" ? "normal" : "bold"); pdf.setFontSize(tipo === "t" ? 12 : 10);
+      return {tipo, partes: pdf.splitTextToSize(txt, W - 12)};
+    });
+    const alt = blocos.reduce((h, b) => h + b.partes.length * (b.tipo === "t" ? 6 : 5) + 3, 8);
+    pdf.roundedRect(L, y - 8, W, alt, 3, 3, "FD");
+    blocos.forEach(b => {
+      pdf.setFont("helvetica", b.tipo === "p" ? "normal" : "bold"); pdf.setFontSize(b.tipo === "t" ? 12 : 10);
+      pdf.setTextColor(b.tipo === "p" ? 30 : 20, b.tipo === "p" ? 60 : 99, b.tipo === "p" ? 40 : 58);
+      b.partes.forEach(t => { pdf.text(t, L + 6, y); y += b.tipo === "t" ? 6 : 5; });
+      y += 3;
+    });
+  }
+  const nomePDF = f => `Contrato Danni's Tur 2027 - ${f.responsavel}.pdf`.replace(/[\\/:*?"<>|]/g, "");
 
   /* link do contrato: curto pros códigos novos (…/contrato?K7M2PX9Q) */
   function linkContrato(token, base){
@@ -226,7 +288,7 @@
   }
 
   window.DT = {padAssinatura, API, ZAP_DANNIS, CONTRATADO, ESCOLAS, MESES, INI, FIM, nomeMes, esc, fmtData, brl, num, hojeISO, vigencia, idade,
-               maskCpf, maskTel, cpfValido, soDigitos, zapLink, contratoHTML, api, preparaImpressao, linkContrato, musicaFundo};
+               maskCpf, maskTel, cpfValido, soDigitos, zapLink, contratoHTML, contratoPDF, nomePDF, carregaPdfLib, api, preparaImpressao, linkContrato, musicaFundo};
   if (!/admin\.html/.test(location.pathname)){
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", musicaFundo); else musicaFundo();
   }

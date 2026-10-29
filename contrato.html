@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=22">
+<link rel="stylesheet" href="estilo.css?v=23">
 <style>
 body{margin:0}
 .passos-gov{list-style:none;counter-reset:p;margin:0;padding:0;display:grid;gap:12px}
@@ -74,8 +74,21 @@ input[type=file]{width:100%;font-size:14px}
       <b>Aguardando a Danni's Tur colocar o valor.</b>
       <span>Assim que o contrato for liberado você recebe o aviso no WhatsApp e, aqui em "Meu contrato", pode imprimir ou assinar pelo gov.br.</span>
     </div>
-    <div id="stAssinado" class="aviso-box ok" hidden><b>Contrato assinado. Obrigado e bora pra 2027!</b><span>Guarde a sua cópia:</span><button class="btn btn-pri" type="button" id="btnCopia" style="justify-self:start">Salvar PDF / imprimir minha cópia</button></div>
+    <div id="stAssinado" class="aviso-box ok" hidden><b>Contrato assinado. Obrigado e bora pra 2027!</b><span>Guarde a sua cópia:</span><button class="btn btn-pri" type="button" id="btnCopia" style="justify-self:start">Baixar minha cópia (PDF)</button></div>
     <div id="stImpresso" class="aviso-box ok" hidden><b>Combinado! Imprima, assine e entregue o contrato na van.</b><span>Se preferir, você ainda pode assinar pelo gov.br abaixo.</span></div>
+
+    <div class="card passo" id="aceitarBox" hidden>
+      <h3>Aceite o seu contrato</h3>
+      <p class="dica" style="margin:0" id="aceitarDica">Leia o contrato abaixo. Se estiver tudo certo, marque e toque em Aceitar. Não precisa assinar à mão nem pelo gov.br.</p>
+      <label class="check"><input type="checkbox" id="vAceite"> Li o contrato e aceito todas as cláusulas, inclusive o aceite eletrônico (cláusula 13).</label>
+      <button class="btn btn-verde" type="button" id="btnAceitar" disabled style="justify-self:start">Aceitar contrato</button>
+      <p class="msg-err" id="aceErr" role="alert"></p>
+      <details class="outro-jeito">
+        <summary>Prefiro assinar pelo gov.br ou imprimir</summary>
+        <p>Sem problema, as opções estão logo abaixo.</p>
+        <button class="btn btn-sec" type="button" id="btnOutros">Mostrar outras formas de assinar</button>
+      </details>
+    </div>
 
     <div class="card passo" id="assinar" hidden>
       <h3>Assine pelo gov.br em 3 passos</h3>
@@ -112,7 +125,7 @@ input[type=file]{width:100%;font-size:14px}
 
 <div id="printArea"><p style="font:16px Arial;padding:40px;text-align:center">Este contrato ainda não foi liberado para impressão pela Danni's Tur.</p></div>
 
-<script src="comum.js?v=8"></script>
+<script src="comum.js?v=9"></script>
 <script>
 (function(){
   const $ = s => document.querySelector(s);
@@ -152,19 +165,24 @@ input[type=file]{width:100%;font-size:14px}
     if (v && v.cpf && v.nasc){ $("#vCpf").value = maskCpf(v.cpf); $("#vNasc").value = v.nasc; cpf = v.cpf; nasc = v.nasc; entrar(); }
   }catch(e){}
 
+  let mostrarOutros = false;
   function mostra(){
     $("#carregando").hidden = true; $("#conteudo").hidden = false;
     $("#ola").textContent = `Contrato de ${fam.responsavel.split(" ")[0]}`;
     const st = fam.status;
     const assinou = st==="assinado_online" || st==="recebido";
     $("#stEspera").hidden = liberado;
-    $("#stEspera").innerHTML = "<b>A Danni's Tur está conferindo o seu contrato.</b><span>Assim que estiver pronto, você recebe o aviso no WhatsApp e assina por este mesmo link, pelo gov.br.</span>";
+    $("#stEspera").innerHTML = fam.aceiteValido ? "<b>Você já aceitou o contrato. A Danni's Tur está conferindo.</b><span>Assim que estiver pronto, você recebe o contrato em PDF no WhatsApp.</span>" : "<b>A Danni's Tur está conferindo o seu contrato.</b><span>Assim que estiver pronto, você recebe o aviso no WhatsApp e aceita por aqui mesmo, com um toque.</span>";
     $("#stAssinado").hidden = !(liberado && assinou);
     $("#stAssinado b").textContent = "Contrato assinado! Bem-vindo à família Danni's!";
-    $("#stAssinado span").textContent = fam.assinatura ? "Guarde a sua cópia:" : "A sua via assinada é o PDF que o gov.br baixou no seu celular. Se quiser, guarde também esta:";
+    $("#stAssinado span").textContent = (fam.assinatura || fam.aceiteValido) ? "Guarde a sua cópia:" : "A sua via assinada é o PDF que o gov.br baixou no seu celular. Se quiser, guarde também esta:";
     $("#stImpresso").hidden = st!=="vai_entregar_impresso";
-    $("#assinar").hidden = !liberado || assinou;
-    $("#chipSt").textContent = !liberado ? "Em conferência" : (assinou ? "Assinado" : "Falta a sua assinatura");
+    const aceito = !!fam.aceiteValido;
+    $("#aceitarBox").hidden = !liberado || assinou || aceito;
+    if (fam.aceiteEm && !aceito) $("#aceitarDica").textContent = "O contrato mudou depois do seu aceite (por exemplo, o valor). Confira e aceite de novo com um toque.";
+    $("#assinar").hidden = !liberado || assinou || aceito || !mostrarOutros;
+    if (aceito && liberado && !assinou){ $("#stAssinado").hidden = false; $("#stAssinado b").textContent = "Contrato aceito! A Danni's Tur vai te mandar a via final no WhatsApp."; $("#stAssinado span").textContent = "Se quiser, guarde já a sua cópia:"; }
+    $("#chipSt").textContent = !liberado ? "Em conferência" : (assinou ? "Assinado" : (aceito ? "Aceito" : "Falta o seu aceite"));
     $("#folha").innerHTML = contratoHTML(fam, liberado ? fam.valores : {});
     $("#folhaWrap").classList.toggle("marca-dagua", !liberado);
     $("#folhaWrap").dataset.marca = "AGUARDANDO LIBERAÇÃO";
@@ -177,7 +195,16 @@ input[type=file]{width:100%;font-size:14px}
     window.print();
   }
   $("#btnImprimir").onclick = imprimir;
-  $("#btnCopia").onclick = ()=>{ if (liberado) window.print(); };
+  $("#btnCopia").onclick = async ()=>{
+    if (!liberado) return;
+    const b = $("#btnCopia"), t = b.textContent; b.disabled = true; b.textContent = "Gerando o PDF…";
+    try{
+      const blob = await DT.contratoPDF(fam, fam.valores), u = URL.createObjectURL(blob), a = document.createElement("a");
+      a.href = u; a.download = DT.nomePDF(fam); document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u), 4000);
+      b.textContent = "Baixado! Baixar de novo";
+    }catch(e){ b.textContent = t; window.print(); }
+    b.disabled = false;
+  };
   window.addEventListener("beforeprint", ()=>{ if (!liberado) preparaImpressao('<p style="font:16px Arial;padding:40px;text-align:center">Este contrato ainda não foi liberado para impressão pela Danni\'s Tur.</p>'); });
 
   /* baixa o contrato como arquivo PDF (pra subir no assinador gov.br) */
@@ -189,19 +216,23 @@ input[type=file]{width:100%;font-size:14px}
     if (!liberado) return;
     const b = $("#btnBaixar"); b.disabled = true; b.textContent = "Gerando o PDF…";
     try{
-      await carregaLib();
-      const caixa = document.createElement("div");
-      caixa.style.cssText = "position:absolute;left:-10000px;top:0;width:720px;background:#fff";
-      caixa.className = "pdf-gerar";
-      caixa.innerHTML = contratoHTML(fam, fam.valores);
-      document.body.appendChild(caixa);
-      const nome = `Contrato Danni's Tur 2027 - ${fam.responsavel}.pdf`.replace(/[\\/:*?"<>|]/g, "");
-      await html2pdf().set({margin:[10,12,10,12], filename:nome, image:{type:"jpeg", quality:0.92}, html2canvas:{scale:2, useCORS:true, backgroundColor:"#ffffff", scrollX:0, scrollY:0, windowWidth:760, width:720},
-        jsPDF:{unit:"mm", format:"a4", orientation:"portrait"}, pagebreak:{mode:["css"], avoid:[".ct-cl",".ct-ass","h4"]}}).from(caixa.firstElementChild).save();
-      caixa.remove();
+      const blob = await DT.contratoPDF(fam, fam.valores), u = URL.createObjectURL(blob), a = document.createElement("a");
+      a.href = u; a.download = DT.nomePDF(fam); document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u), 4000);
       b.textContent = "Baixado! Baixar de novo";
     }catch(e){ b.textContent = "Baixar contrato (PDF)"; $("#envErr").textContent = "Não consegui gerar o PDF aqui. Tente de novo ou use o Chrome."; }
     b.disabled = false;
+  };
+
+
+  $("#vAceite").onchange = e => $("#btnAceitar").disabled = !e.target.checked;
+  $("#btnOutros").onclick = () => { mostrarOutros = true; mostra(); $("#assinar").scrollIntoView({behavior:"smooth", block:"start"}); };
+  $("#btnAceitar").onclick = async () => {
+    const b = $("#btnAceitar"); b.disabled = true; b.textContent = "Registrando…"; $("#aceErr").textContent = "";
+    try{
+      const r = await api("aceitar", Object.assign(chave(), {aceite: true, aparelho: navigator.userAgent.slice(0, 160)}));
+      fam = r.familia; liberado = r.liberado; mostra(); window.scrollTo({top:0, behavior:"smooth"});
+    }catch(e){ $("#aceErr").textContent = e.message || "Não consegui registrar agora. Tente de novo."; }
+    b.disabled = !$("#vAceite").checked; b.textContent = "Aceitar contrato";
   };
 
   $("#arq").onchange = ()=>{ $("#btnEnviar").disabled = !$("#arq").files.length; $("#envErr").textContent=""; };

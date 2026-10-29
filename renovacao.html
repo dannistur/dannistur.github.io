@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=22">
+<link rel="stylesheet" href="estilo.css?v=23">
 <style>body{margin:0}</style>
 </head>
 <body>
@@ -36,7 +36,7 @@
     <div class="titulo-sec">
       <small>Ano letivo 2027</small>
       <h2>Renove a vaga do seu filho</h2>
-      <p>Confirme que vai continuar com a gente: preencha os dados e o valor combinado no WhatsApp. A Danni's Tur confere e te manda o contrato pra assinar pelo gov.br.</p>
+      <p>Confirme que vai continuar com a gente: preencha os dados e o valor combinado no WhatsApp, leia o contrato e aceite com um toque. A Danni's Tur confere e te manda o contrato pronto no WhatsApp.</p>
     </div>
 
     <div class="card" style="gap:22px">
@@ -44,7 +44,7 @@
         <div class="prog" id="prog" style="width:0"></div>
         <div class="parada" data-p="1"><div class="placa">1</div>Escola</div>
         <div class="parada" data-p="2"><div class="placa">2</div>Dados</div>
-        <div class="parada" data-p="3"><div class="placa">3</div>Confirmação</div>
+        <div class="parada" data-p="3"><div class="placa">3</div>Aceite</div>
       </div>
 
       <!-- etapa 1: toque na escola e já segue -->
@@ -115,15 +115,16 @@
       <section id="e3" hidden style="display:grid;gap:16px">
         <h3 style="font-size:22px">Confira os dados</h3>
         <dl class="resumo" id="resumo"></dl>
-        <button type="button" class="ler-contrato" id="lerContrato">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.8h8.5L19 7.3v13.9H6z" fill="#fff" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14.3 2.8v4.6H19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8.6 11h7.8M8.6 13.8h7.8M8.6 16.6h4.6" stroke="#f4791f" stroke-width="1.5" stroke-linecap="round"/></svg>
-          <div><b>Ler o contrato 2027</b><span>Prévia completa, com os seus dados e o valor combinado.</span></div>
-        </button>
-        <label class="check"><input type="checkbox" id="aceite"> Li a prévia do contrato, confirmo que quero renovar o transporte escolar com a Danni's Tur para 2027 e autorizo o uso destes dados para o contrato.</label>
+        <h3 style="font-size:22px">Leia o contrato</h3>
+        <div class="contrato-ler" id="contratoLer" tabindex="0" aria-label="Contrato 2027 completo"></div>
+        <div class="aceite-box">
+          <label class="check"><input type="checkbox" id="aceite"> <span id="aceiteTxt">Li o contrato acima e aceito todas as cláusulas, inclusive o aceite eletrônico (cláusula 13). Quero renovar o transporte escolar com a Danni's Tur para 2027 e autorizo o uso destes dados para o contrato.</span></label>
+          <p class="dica" style="margin:0">Não precisa assinar à mão nem pelo gov.br: o seu aceite fica registrado com o seu CPF, a data e a hora.</p>
+        </div>
         <p class="msg-err" id="e3Err" role="alert"></p>
         <div class="acoes">
           <button class="btn btn-link" type="button" id="volta2">Corrigir dados</button>
-          <button class="btn btn-pri" type="button" id="confirmar" disabled>Enviar</button>
+          <button class="btn btn-verde" type="button" id="confirmar" disabled>Aceitar contrato</button>
         </div>
       </section>
 
@@ -131,15 +132,16 @@
       <section id="e4" class="sucesso" hidden style="display:grid;gap:18px">
         <div class="boas-vindas" aria-hidden="true">🚐💜</div>
         <h3>Seja bem-vindo à família Danni's!!!</h3>
-        <p id="sucTxt">Recebemos os seus dados. Logo a Danni's Tur confere e te manda no WhatsApp (e no e-mail, se informou) o contrato pra assinar pelo gov.br.</p>
+        <p id="sucTxt">Contrato aceito! Logo a Danni's Tur confere e te manda o contrato pronto no WhatsApp.</p>
+        <div class="aceito-ok" id="aceitoOk" hidden></div>
         <a class="btn btn-pri" id="linkContrato" href="#" hidden>Ver meu contrato</a>
         <a class="btn btn-zap" id="zap" href="#" target="_blank" rel="noopener" hidden>Enviar confirmação no WhatsApp</a>
         <div class="box-assina">
           <h4>Próximos passos</h4>
           <ol class="passos">
-            <li><span>A Danni's Tur confere o valor, assina e te manda o link do contrato no <b>WhatsApp</b> (e no <b>e-mail</b>, se você informou).</span></li>
-            <li><span>No link você <b>baixa o PDF</b> e assina de graça pelo <b>gov.br</b> (assinador.iti.br), com a sua conta gov.br nível prata ou ouro.</span></li>
-            <li><span>Depois é só <b>enviar o PDF assinado</b> pelo mesmo link. Pronto!</span></li>
+            <li><span>A Danni's Tur confere o valor e assina.</span></li>
+            <li><span>Você recebe o <b>contrato pronto, em PDF, no WhatsApp</b>. Guarde o arquivo.</span></li>
+            <li><span>Se estiver tudo certo, é só responder <b>ACEITO</b> por lá. Pronto!</span></li>
           </ol>
         </div>
         <button class="btn btn-link" type="button" id="novo">Fazer outra renovação</button>
@@ -148,14 +150,6 @@
   </div>
 </main>
 
-<dialog id="dlg" aria-labelledby="dlgTit">
-  <div class="dlg-barra">
-    <b id="dlgTit">Prévia do contrato 2027</b>
-    <div class="bts"><button type="button" class="btn btn-sec" id="fecharDlg">Fechar</button></div>
-  </div>
-  <p class="dlg-nota">Prévia. O valor e a impressão ficam disponíveis quando a Danni's Tur liberar o seu contrato.</p>
-  <div id="dlgCorpo" class="marca-dagua" data-marca="PRÉVIA"></div>
-</dialog>
 
 <footer>
   <b>Danni's Tur</b>
@@ -168,7 +162,7 @@
 
 <div id="printArea"><p style="font:16px Arial;padding:40px;text-align:center">O contrato só pode ser impresso depois que a Danni's Tur liberar, pelo link do seu contrato.</p></div>
 
-<script src="comum.js?v=7"></script>
+<script src="comum.js?v=9"></script>
 <script>
 (function(){
   const $ = s => document.querySelector(s);
@@ -178,11 +172,11 @@
   /* ---------- mesmo formulário pra renovação e pra contrato novo (renovacao.html?novo) ---------- */
   const NOVO = new URLSearchParams(location.search).has("novo");
   const TX = NOVO ? {
-    acao: "contratar", fim: "Enviar cadastro", sucesso: "Recebemos o seu cadastro!", outro: "Fazer outro cadastro",
+    acao: "contratar", fim: "Aceitar contrato", sucesso: "Recebemos o seu cadastro!", outro: "Fazer outro cadastro",
     titulo: "MATRÍCULA NOVA 2027", confirma: "✅ Quero contratar o transporte escolar da Danni's Tur para 2027.",
     zap: d => `Oi! Fiz o cadastro e assinei o contrato da van 2027 (${d.responsavel} – ${d.alunos.map(a=>a.nome).join(", ")}). Contrato assinado: `
   } : {
-    acao: "renovar", fim: "Confirmar renovação", sucesso: "Recebemos a sua renovação!", outro: "Fazer outra renovação",
+    acao: "renovar", fim: "Aceitar contrato", sucesso: "Recebemos a sua renovação!", outro: "Fazer outra renovação",
     titulo: "RENOVAÇÃO 2027", confirma: "✅ Confirmo que quero renovar o transporte escolar para 2027.",
     zap: d => `Oi! Renovei e assinei o contrato da van 2027 (${d.responsavel} – ${d.alunos.map(a=>a.nome).join(", ")}). Contrato assinado: `
   };
@@ -190,10 +184,8 @@
     document.title = "Danni's Tur · Contrato novo 2027";
     document.body.classList.add("modo-novo");
     $(".titulo-sec h2").textContent = "Contrate a van pro seu filho";
-    $(".titulo-sec p").textContent = "Preencha os dados do aluno e o valor combinado no WhatsApp. A Danni's Tur confere e te manda o contrato pra assinar pelo gov.br.";
-    $("#aceite").parentElement.lastChild.textContent = " Li a prévia do contrato, quero contratar o transporte escolar da Danni's Tur para 2027 e autorizo o uso destes dados para o contrato.";
-    $("#confirmar").textContent = TX.fim;
-    $("#sucTxt").textContent = "Recebemos os seus dados. Logo a Danni's Tur confere e te manda no WhatsApp (e no e-mail, se informou) o contrato pra assinar pelo gov.br.";
+    $(".titulo-sec p").textContent = "Preencha os dados do aluno e o valor combinado no WhatsApp, leia o contrato e aceite com um toque. A Danni's Tur confere e te manda o contrato pronto no WhatsApp.";
+    $("#aceiteTxt").textContent = "Li o contrato acima e aceito todas as cláusulas, inclusive o aceite eletrônico (cláusula 13). Quero contratar o transporte escolar da Danni's Tur para 2027 e autorizo o uso destes dados para o contrato.";
     $("#novo").textContent = TX.outro;
   }
 
@@ -312,7 +304,8 @@
     };
     const vg = DT.vigencia(dados.dataCadastro);
     dados.valores = {ini:vg.ini, mensalidade:mens, parcelas:vg.meses, total:Math.round(mens*vg.meses*100)/100, dataContrato:hojeISO()};
-    resumo(); $("#aceite").checked=false; $("#confirmar").disabled=true; $("#e3Err").textContent=""; mostrar(3);
+    resumo(); $("#contratoLer").innerHTML = contratoHTML(dados, dados.valores); $("#contratoLer").scrollTop = 0;
+    $("#aceite").checked=false; $("#confirmar").disabled=true; $("#e3Err").textContent=""; mostrar(3);
   });
   document.addEventListener("input", e=>{ if (e.target.closest("#e2")) marca(e.target, true); });
   document.addEventListener("change", e=>{ if (e.target.type==="radio"){ const ch=e.target.closest(".chips"); if (ch) ch.style.outline="none"; } });
@@ -338,11 +331,6 @@
   $("#aceite").onchange = podeEnviar;
 
 
-  /* ---------- prévia do contrato (sem valor, sem impressão) ---------- */
-  const dlg = $("#dlg");
-  function abrirPrevia(){ $("#dlgCorpo").innerHTML = contratoHTML(dados, dados.valores); dlg.showModal ? dlg.showModal() : dlg.setAttribute("open",""); dlg.scrollTop=0; }
-  $("#lerContrato").onclick = abrirPrevia;
-  $("#fecharDlg").onclick = ()=>dlg.close ? dlg.close() : dlg.removeAttribute("open");
 
   /* ---------- confirmar ---------- */
   function mensagem(){
@@ -360,10 +348,11 @@
     $("#linkContrato").hidden = true; $("#zap").hidden = true;
     if (API){
       try{
-        const r = await api("cadastrar", {dados: {...dados, tipo: NOVO ? "novo" : "renovacao", aparelho: navigator.userAgent.slice(0, 160)}});
+        const r = await api("cadastrar", {dados: {...dados, tipo: NOVO ? "novo" : "renovacao", aceite: true, aparelho: navigator.userAgent.slice(0, 160)}});
         $("#linkContrato").href = "contrato"; $("#linkContrato").hidden = false;
         $("#linkContrato").onclick = ()=>{ try{ sessionStorage.setItem("dt-verif", JSON.stringify({cpf:dados.cpf, nasc:dados.alunos[0].nasc})); }catch(e){} };
-        $("#sucTxt").textContent = "Recebemos os seus dados. Logo a Danni's Tur confere e te manda no WhatsApp (e no e-mail, se informou) o contrato pra assinar pelo gov.br.";   // a Danni's Tur recebe o aviso no WhatsApp pelo servidor
+        $("#sucTxt").textContent = "Contrato aceito! Logo a Danni's Tur confere e te manda o contrato pronto no WhatsApp.";   // a Danni's Tur recebe o aviso no WhatsApp pelo servidor
+        if (r.aceite){ const [d, h] = String(r.aceite.em).split("T"); $("#aceitoOk").innerHTML = `<span>✅ Aceito em ${fmtData(d)} às ${String(h||"").slice(0,5)}</span><span>Código de integridade: <span class="ct-codigo">${esc(r.aceite.codigo)}</span></span>`; $("#aceitoOk").hidden = false; }
         mostrar(4);
       }catch(e){
         $("#e3Err").textContent = "Não consegui enviar agora. Confira a internet e toque de novo em enviar.";
