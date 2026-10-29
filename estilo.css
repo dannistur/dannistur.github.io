@@ -400,3 +400,12 @@ img.van{height:auto}
 .estrada.persp #van{left:0;top:0;bottom:auto;transform-origin:0 0;will-change:transform,opacity}
 #van img{filter:drop-shadow(0 6px 5px rgba(0,0,0,.45))}
 .fumo-txt.topo{bottom:auto;top:2px}
+/* farol piscando quando a van para (posição dos faróis na foto) */
+#van .farol{position:absolute;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;opacity:0;
+  background:radial-gradient(circle,#fff 0,#fff 9%,rgba(235,246,255,.9) 18%,rgba(200,225,255,.45) 36%,rgba(200,225,255,0) 66%)}
+#van .farol::after{content:"";position:absolute;left:-55%;right:-55%;top:47%;height:6%;border-radius:50%;background:radial-gradient(ellipse,#fff 0,rgba(220,238,255,.8) 35%,rgba(220,238,255,0) 72%)}
+#van .farol::before{content:"";position:absolute;left:48%;width:4%;top:18%;bottom:18%;border-radius:50%;background:radial-gradient(ellipse,rgba(255,255,255,.6),rgba(255,255,255,0) 70%)}
+#van .f1{left:44.5%;top:52%;width:62%;aspect-ratio:1}
+#van .f2{left:3.4%;top:50.5%;width:30%;aspect-ratio:1}
+#van.pisca .farol{animation:pisca 1.3s ease-out}
+@keyframes pisca{0%{opacity:0}7%{opacity:1}20%{opacity:0}34%{opacity:0}41%{opacity:1}56%{opacity:0}100%{opacity:0}}

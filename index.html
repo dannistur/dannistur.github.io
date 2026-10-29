@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=25">
+<link rel="stylesheet" href="estilo.css?v=26">
 <style>body{margin:0} main.inicio{padding-block:24px 40px} main.inicio > .wrap{display:grid;gap:26px}</style>
 </head>
 <body>
@@ -34,7 +34,7 @@
 
 <div class="estrada" aria-hidden="true">
   <svg class="rua" id="rua" aria-hidden="true"></svg>
-  <div class="van" id="van"><img src="img/van-nova.webp" alt="" width="925" height="667"></div>
+  <div class="van" id="van"><img src="img/van-nova.webp" alt="" width="925" height="667"><i class="farol f1"></i><i class="farol f2"></i></div>
   <div class="fumaca" id="fumaca"></div>
 </div>
 
@@ -235,16 +235,17 @@
     const ciclo = T.entra + T.parada + T.sai + T.vazio;
     // começa onde a van ainda está fora da tela (ou bem pequena lá no fundo, em tela grande)
     function sInicio(){ for (let s = .12; s < 1; s += .01){ const {A, V, w} = G, gx = V.x + (A.x - V.x) * s; if (gx - FRENTE[0] * w * s < G.W + 4) return Math.max(.12, s - .03); } return .5; }
-    let t0 = performance.now(), saiu = false, ultS = null, ultFumo = 0, s0 = sInicio();
+    let t0 = performance.now(), saiu = false, piscou = false, ultS = null, ultFumo = 0, s0 = sInicio();
     function quadro(agora){
       const t = (agora - t0) % ciclo, volta = Math.floor((agora - t0) / ciclo);
-      if (volta !== quadro.v){ quadro.v = volta; saiu = false; s0 = sInicio(); }
+      if (volta !== quadro.v){ quadro.v = volta; saiu = false; piscou = false; s0 = sInicio(); }
       let s, incl = 0;
       const d0 = 1 / s0, dFim = 1 / 2.1;                                         // "distância" até a câmera
       if (t < T.entra){
         const u = t / T.entra; s = 1 / (1 + (d0 - 1) * Math.pow(1 - u, 2.2));    // vem desacelerando até parar
       } else if (t < T.entra + T.parada){
         s = 1; const d = (t - T.entra) / 450; incl = d < 1 ? -Math.sin(d * Math.PI) * 1.4 : 0;   // "mergulho" do bico ao frear
+        if (!piscou && d > 1.1){ piscou = true; pisca(); }                         // parou: dá duas piscadas de farol
       } else if (t < T.entra + T.parada + T.sai){
         const u = (t - T.entra - T.parada) / T.sai; s = 1 / (1 - (1 - dFim) * u * u);   // sai devagar e vem passando pela frente
         if (!saiu){ saiu = true; escreve25(); }
@@ -259,6 +260,7 @@
     requestAnimationFrame(quadro);
     document.addEventListener("visibilitychange", () => { if (!document.hidden){ t0 = performance.now(); ultS = null; quadro.v = undefined; } });
 
+    function pisca(){ box.classList.remove("pisca"); void box.offsetWidth; box.classList.add("pisca"); }
     /* fumaça: bolinhas cinza que crescem, sobem e somem (indo pra trás da van) */
     function fumo(x, base, w){
       if (document.hidden || x < -40 || x > G.W + 40) return;
