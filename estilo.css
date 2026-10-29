@@ -392,10 +392,11 @@ img.van{height:auto}
 .contrato.pdf p{text-align:left}
 .contrato.pdf .ct-registro{margin-top:4px}
 
-/* van nova (Renault Master, foto recortada): estrada mais larga pra caber a perspectiva das rodas */
-.estrada{height:248px}
-.estrada::before{height:58px}
-.estrada::after{bottom:27px}
-#van{bottom:4px;width:min(262px,64vw);left:calc(50% - min(131px,32vw));transform-origin:30% 100%}
-.estrada.js #van{left:0}
+/* van nova (Renault Master, foto recortada) andando pela rua em perspectiva: vem do fundo e passa pela frente */
+.estrada{height:262px}
+.estrada .rua{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+.estrada.persp::before,.estrada.persp::after{display:none}
+#van{bottom:4px;width:min(262px,64vw);left:calc(50% - min(131px,32vw))}
+.estrada.persp #van{left:0;top:0;bottom:auto;transform-origin:0 0;will-change:transform,opacity}
 #van img{filter:drop-shadow(0 6px 5px rgba(0,0,0,.45))}
+.fumo-txt.topo{bottom:auto;top:2px}

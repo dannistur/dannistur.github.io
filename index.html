@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=24">
+<link rel="stylesheet" href="estilo.css?v=25">
 <style>body{margin:0} main.inicio{padding-block:24px 40px} main.inicio > .wrap{display:grid;gap:26px}</style>
 </head>
 <body>
@@ -33,7 +33,8 @@
 </header>
 
 <div class="estrada" aria-hidden="true">
-  <div class="van" id="van"><img src="img/van-nova.webp" alt="" width="640" height="461"></div>
+  <svg class="rua" id="rua" aria-hidden="true"></svg>
+  <div class="van" id="van"><img src="img/van-nova.webp" alt="" width="925" height="667"></div>
   <div class="fumaca" id="fumaca"></div>
 </div>
 
@@ -190,60 +191,89 @@
     return {carrega};
   })();
 
-  /* ---------- van na estrada: vem, freia (com som), espera e sai bem devagar ---------- */
-  (async function vanNaEstrada(){
-    const box = $("#van"), estrada = box.parentElement, fumaca = $("#fumaca");
+  /* ---------- van na estrada: vem lá do fundo pela rua (em perspectiva), freia, espera e sai vindo pra frente ---------- */
+  (function vanNaEstrada(){
+    const box = $("#van"), estrada = box.parentElement, fumaca = $("#fumaca"), svg = $("#rua");
     const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (calmo){ fumaca.innerHTML = '<div class="fumo-txt fixo">25 anos</div>'; return; }   // quem pediu menos movimento vê a van parada no meio
+    // pontos da foto (fração da largura/altura): roda da frente e roda de trás tocando o chão, escapamento
+    const FRENTE = [.53, .99], TRAS = [.94, .80], ESCAP = [.95, .76];
+    let G = null;   // geometria da rua, refeita se a tela mudar de tamanho
+    function geometria(){
+      const W = estrada.clientWidth, H = estrada.clientHeight, w = box.offsetWidth, h = box.offsetHeight;
+      const A = {x: W * .5 - w * .5 + FRENTE[0] * w, y: H - 6};                  // onde a roda da frente para (van no meio)
+      const dx = (TRAS[0] - FRENTE[0]) * w, dy = (TRAS[1] - FRENTE[1]) * h;      // a rua segue a linha das rodas até o horizonte
+      const k = (A.y - 14) / -dy, V = {x: A.x + dx * k, y: 14};                  // ponto de fuga (pode ficar fora da tela)
+      G = {W, H, w, h, A, V, ang: Math.atan2(A.y - V.y, A.x - V.x), L: Math.hypot(A.x - V.x, A.y - V.y)};
+      desenhaRua();
+    }
+    const ponto = (ang, dist) => [G.V.x + Math.cos(ang) * dist, G.V.y + Math.sin(ang) * dist];
+    function desenhaRua(){
+      const {W, H, V, ang, L} = G, R = L * 6, gr = Math.PI / 180;
+      const far = ang + 14 * gr, near = ang - 5.5 * gr, meio = ang + 6.5 * gr;   // ângulo maior = mais pra cima (lado de lá da rua)
+      const pol = (pts, cor) => `<polygon points="${pts.map(p => p.map(n => n.toFixed(1)).join(",")).join(" ")}" fill="${cor}"/>`;
+      let h = pol([[V.x, V.y], ponto(far + 1.1 * gr, R), ponto(near - 1.6 * gr, R)], "#d8d2de");   // calçada dos dois lados
+      h += pol([[V.x, V.y], ponto(far, R), ponto(near, R)], "#2b2630");                         // asfalto
+      for (let d = .12; d < 6; d *= 1.24){                                                      // faixa amarela no meio, maior perto
+        const a = d * L, b = d * 1.1 * L, e = .9 * gr * Math.min(1, d);
+        h += pol([ponto(meio - e * .5, a), ponto(meio + e * .5, a), ponto(meio + e * .5, b), ponto(meio - e * .5, b)], "#ffc61a");
+      }
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = h;
+    }
+    // escala s: 1 = parada no meio; menor = lá no fundo; maior = passando perto
+    function posiciona(s, incl, pulo){
+      const {A, V, w, h} = G;
+      const gx = V.x + (A.x - V.x) * s, gy = V.y + (A.y - V.y) * s;
+      box.style.transform = `translate(${(gx - FRENTE[0] * w * s).toFixed(1)}px, ${(gy - FRENTE[1] * h * s + pulo).toFixed(1)}px) scale(${s.toFixed(4)}) rotate(${incl}deg)`;
+      box.style.opacity = Math.min(1, Math.max(0, (s - .1) / .15));
+      return {x: gx - FRENTE[0] * w * s, y: gy - FRENTE[1] * h * s};
+    }
+    estrada.classList.add("persp");
+    geometria(); addEventListener("resize", geometria);
+    if (calmo){ posiciona(1, 0, 0); fumaca.innerHTML = '<div class="fumo-txt fixo">25 anos</div>'; return; }   // quem pediu menos movimento vê a van parada no meio
     estrada.classList.add("js");
-    const som = {toca(){}, para(){}};   // a música de fundo fica no comum.js (todas as páginas)
-    const T = {entra: 3400, parada: 2200, sai: 7600, vazio: 1400};
+    const T = {entra: 3600, parada: 2200, sai: 5200, vazio: 1200};
     const ciclo = T.entra + T.parada + T.sai + T.vazio;
-    const outQuart = t => 1 - Math.pow(1 - t, 4), inQuad = t => t * t;
-    let t0 = performance.now(), saiu = false, ultimoX = null, ultFumo = 0;
+    // começa onde a van ainda está fora da tela (ou bem pequena lá no fundo, em tela grande)
+    function sInicio(){ for (let s = .12; s < 1; s += .01){ const {A, V, w} = G, gx = V.x + (A.x - V.x) * s; if (gx - FRENTE[0] * w * s < G.W + 4) return Math.max(.12, s - .03); } return .5; }
+    let t0 = performance.now(), saiu = false, ultS = null, ultFumo = 0, s0 = sInicio();
     function quadro(agora){
-      const W = estrada.clientWidth, w = box.offsetWidth, meio = (W - w) / 2, fora = W + 20, fim = -w - 20;   // a van nova olha pra esquerda: vem da direita e sai pela esquerda
       const t = (agora - t0) % ciclo, volta = Math.floor((agora - t0) / ciclo);
-      if (volta !== quadro.v){ quadro.v = volta; saiu = false; som.para(); }
-      som.toca(t / 1000);   // barulho do ônibus acompanha a van (começa no ponto certo se a pessoa tocar na tela no meio)
-      let x, incl = 0;
+      if (volta !== quadro.v){ quadro.v = volta; saiu = false; s0 = sInicio(); }
+      let s, incl = 0;
+      const d0 = 1 / s0, dFim = 1 / 2.1;                                         // "distância" até a câmera
       if (t < T.entra){
-        x = fora + (meio - fora) * outQuart(t / T.entra);
+        const u = t / T.entra; s = 1 / (1 + (d0 - 1) * Math.pow(1 - u, 2.2));    // vem desacelerando até parar
       } else if (t < T.entra + T.parada){
-        x = meio; const d = (t - T.entra) / 450;           // "mergulho" do bico ao parar
-        incl = d < 1 ? -Math.sin(d * Math.PI) * 1.6 : 0;
+        s = 1; const d = (t - T.entra) / 450; incl = d < 1 ? -Math.sin(d * Math.PI) * 1.4 : 0;   // "mergulho" do bico ao frear
       } else if (t < T.entra + T.parada + T.sai){
-        x = meio + (fim - meio) * inQuad((t - T.entra - T.parada) / T.sai);
-        if (!saiu){ saiu = true; escreve25(x, w); }
-      } else x = fim;
-      const andando = ultimoX !== null && Math.abs(x - ultimoX) > .15 && Math.abs(x - ultimoX) < W;
-      ultimoX = x;
-      const pulo = andando ? Math.sin(agora / 70) * .9 : 0;   // balanço leve da suspensão enquanto anda
-      box.style.transform = `translate(${x}px, ${pulo.toFixed(2)}px) rotate(${incl}deg)`;
-      // fumaça cinza saindo do escapamento (traseira, à direita) enquanto anda
-      if (andando && agora - ultFumo > 150 && x > -w && x < W){ ultFumo = agora; fumo(x + w * .96, w); }
+        const u = (t - T.entra - T.parada) / T.sai; s = 1 / (1 - (1 - dFim) * u * u);   // sai devagar e vem passando pela frente
+        if (!saiu){ saiu = true; escreve25(); }
+      } else s = 0;
+      const andando = ultS !== null && s > 0 && Math.abs(s - ultS) > .0004;
+      ultS = s;
+      if (!s){ box.style.opacity = 0; requestAnimationFrame(quadro); return; }
+      const pos = posiciona(s, incl, andando ? Math.sin(agora / 70) * .8 * s : 0);
+      if (andando && agora - ultFumo > 150){ ultFumo = agora; fumo(pos.x + ESCAP[0] * G.w * s, G.H - (pos.y + ESCAP[1] * G.h * s), G.w * s); }   // fumaça do escapamento
       requestAnimationFrame(quadro);
     }
     requestAnimationFrame(quadro);
-    document.addEventListener("visibilitychange", () => { som.para(); if (!document.hidden){ t0 = performance.now(); ultimoX = null; quadro.v = undefined; } });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden){ t0 = performance.now(); ultS = null; quadro.v = undefined; } });
 
-    /* fumaça: bolinhas cinza que crescem, sobem e somem */
-    function fumo(xEsc, w){
-      if (document.hidden) return;
+    /* fumaça: bolinhas cinza que crescem, sobem e somem (indo pra trás da van) */
+    function fumo(x, base, w){
+      if (document.hidden || x < -40 || x > G.W + 40) return;
       const p = document.createElement("i"), tam = w * (.09 + Math.random() * .06);
       p.className = "fumo";
-      p.style.cssText = `left:${xEsc - tam * .6}px;bottom:${6 + w * .2 + Math.random() * 6}px;width:${tam}px;height:${tam}px;--dx:${18 + Math.random() * 30}px;--dy:${-(14 + Math.random() * 22)}px`;
+      p.style.cssText = `left:${x - tam * .4}px;bottom:${base - tam * .3 + Math.random() * 4}px;width:${tam}px;height:${tam}px;--dx:${14 + Math.random() * 26}px;--dy:${-(14 + Math.random() * 22)}px`;
       fumaca.appendChild(p); p.addEventListener("animationend", () => p.remove());
     }
-    /* quando a van sai, a fumaça escreve "25 anos" e depois evapora */
-    function escreve25(x, w){
+    /* quando a van sai, a fumaça escreve "25 anos" no alto e depois evapora */
+    function escreve25(){
       if (document.hidden) return;
-      for (let i = 0; i < 9; i++) setTimeout(() => fumo(x + w * .96 + i * 6, w * 1.6), i * 70);
-      const txt = document.createElement("div"); txt.className = "fumo-txt";
+      const txt = document.createElement("div"); txt.className = "fumo-txt topo";
       txt.innerHTML = [..."25 anos"].map((c, i) => `<span style="--i:${i}">${c === " " ? "&nbsp;" : c}</span>`).join("");
-      txt.style.bottom = `${4 + box.offsetHeight * .98}px`;             // a fumaça sobe e escreve acima da van
       fumaca.appendChild(txt);
-      txt.style.left = `${Math.max(8, Math.min(estrada.clientWidth - txt.offsetWidth - 8, x + w * .75 - txt.offsetWidth / 2))}px`;
+      txt.style.left = `${Math.max(8, Math.min(G.W - txt.offsetWidth - 8, G.W / 2 + G.w * .6))}px`;   // à direita, atrás da van
       const r = txt.getBoundingClientRect(), e = estrada.getBoundingClientRect();   // nuvem por trás das letras
       for (let i = 0; i < 6; i++) setTimeout(() => nuvem(r.left - e.left + r.width * (i / 5), e.bottom - r.bottom - 6, r.height), 120 + i * 90);
       setTimeout(() => txt.remove(), 5200);
@@ -254,7 +284,6 @@
       p.style.cssText = `left:${cx - tam / 2}px;bottom:${base}px;width:${tam}px;height:${tam}px;--dx:${-10 + Math.random() * 20}px;--dy:${-(10 + Math.random() * 16)}px`;
       fumaca.appendChild(p); p.addEventListener("animationend", () => p.remove());
     }
-
   })();
 
   /* ---------- instalar o app (Android: botão do sistema; iPhone: passo a passo) ---------- */
