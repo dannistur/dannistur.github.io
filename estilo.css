@@ -391,3 +391,11 @@ img.van{height:auto}
 /* PDF gerado no navegador: texto alinhado à esquerda (o justificado sobrepõe letras) e registro do aceite numa página inteira */
 .contrato.pdf p{text-align:left}
 .contrato.pdf .ct-registro{margin-top:4px}
+
+/* van nova (Renault Master, foto recortada): estrada mais larga pra caber a perspectiva das rodas */
+.estrada{height:248px}
+.estrada::before{height:58px}
+.estrada::after{bottom:27px}
+#van{bottom:4px;width:min(262px,64vw);left:calc(50% - min(131px,32vw));transform-origin:30% 100%}
+.estrada.js #van{left:0}
+#van img{filter:drop-shadow(0 6px 5px rgba(0,0,0,.45))}
