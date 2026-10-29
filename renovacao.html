@@ -349,8 +349,7 @@
     if (API){
       try{
         const r = await api("cadastrar", {dados: {...dados, tipo: NOVO ? "novo" : "renovacao", aceite: true, aparelho: navigator.userAgent.slice(0, 160)}});
-        $("#linkContrato").href = "contrato"; $("#linkContrato").hidden = false;
-        $("#linkContrato").onclick = ()=>{ try{ sessionStorage.setItem("dt-verif", JSON.stringify({cpf:dados.cpf, nasc:dados.alunos[0].nasc})); }catch(e){} };
+                $("#linkContrato").onclick = ()=>{ try{ sessionStorage.setItem("dt-verif", JSON.stringify({cpf:dados.cpf, nasc:dados.alunos[0].nasc})); }catch(e){} };
         $("#sucTxt").textContent = "Contrato aceito! Logo a Danni's Tur confere e te manda o contrato pronto no WhatsApp.";   // a Danni's Tur recebe o aviso no WhatsApp pelo servidor
         if (r.aceite){ const [d, h] = String(r.aceite.em).split("T"); $("#aceitoOk").innerHTML = `<span>✅ Aceito em ${fmtData(d)} às ${String(h||"").slice(0,5)}</span><span>Código de integridade: <span class="ct-codigo">${esc(r.aceite.codigo)}</span></span>`; $("#aceitoOk").hidden = false; }
         mostrar(4);
