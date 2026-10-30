@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=28">
+<link rel="stylesheet" href="estilo.css?v=29">
 <style>body{margin:0}</style>
 </head>
 <body>
@@ -67,6 +67,7 @@
 
       <!-- etapa 2 -->
       <form id="e2" hidden novalidate style="display:grid;gap:24px">
+        <div class="preco-topo" id="precoTopo" hidden><span>Mensalidade 2027</span><b id="precoTopoV"></b><small id="precoTopoC"></small></div>
         <fieldset>
           <legend>Responsável (quem assina o contrato)</legend>
           <div class="grade">
@@ -352,7 +353,8 @@
   }
   function atualizaPreco(){
     const t = DT.precoTabela(alunosDoForm(), $("#rBairro").value), vg = DT.vigencia(hojeISO()), inp = $("#rValor");
-    $("#precoTab").hidden = !t; $("#valorLivre").hidden = !!t;
+    $("#precoTab").hidden = !t; $("#valorLivre").hidden = !!t; $("#precoTopo").hidden = !t;
+    if (t){ $("#precoTopoV").textContent = `R$ ${DT.brl(t.valor)} por mês`; $("#precoTopoC").textContent = t.conta; }
     if (t){
       inp.value = DT.brl(t.valor); inp.dataset.auto = "1"; marca(inp, true);
       $("#precoV").textContent = `R$ ${DT.brl(t.valor)} por mês`;
