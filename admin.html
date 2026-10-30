@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=26">
+<link rel="stylesheet" href="estilo.css?v=27">
 <style>
 body{margin:0}
 .pg{max-width:1080px;margin:0 auto;padding-block:18px 48px;display:grid;gap:16px}
@@ -184,7 +184,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
 <div id="printArea"></div>
 
-<script src="comum.js?v=10"></script>
+<script src="comum.js?v=11"></script>
 <script src="cartao.js?v=1"></script>
 <script>
 (function(){
@@ -238,7 +238,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     $("#lista").innerHTML = lista.length ? lista.map(f=>`
       <button type="button" class="fam" data-id="${f.id}">
         <span class="n">${f.id}</span>
-        <span><b>${esc(f.responsavel)}</b>${f.tipo==="novo"?' <em class="tag-novo">Contrato novo</em>':''}<small>${f.alunos.map(a=>`${esc(a.nome)} · ${esc(a.escola)}`).join(" · ")}</small><small>${esc(f.celular)} · cadastro ${fmtData(f.dataCadastro)}${f.valores && num(f.valores.mensalidade) ? ` · R$ ${brl(num(f.valores.mensalidade))}/mês` : ""}</small></span>
+        <span><b>${esc(f.responsavel)}</b>${f.tipo==="novo"?' <em class="tag-novo">Contrato novo</em>':''}<small>${f.alunos.map(a=>`${esc(a.nome)} · ${esc(a.escola)}`).join(" · ")}</small><small>${esc(f.celular)} · cadastro ${fmtData(f.dataCadastro)}${f.valores && num(f.valores.mensalidade) ? ` · R$ ${brl(num(f.valores.mensalidade))}/mês` : ""}</small>${f.obs ? `<small class="obs-lista">📝 ${esc(f.obs.length > 90 ? f.obs.slice(0, 90) + "…" : f.obs)}</small>` : ""}</span>
         ${faltaVoce(f) ? '<span class="pill falta">Falta você conferir</span>' : `<span class="pill ${f.status}">${NOMES[f.status]||f.status}</span>`}
       </button>`).join("") : `<div class="vazio">${familias.length ? "Nada nesse filtro." : "Nenhuma renovação ainda. Quando um pai confirmar no site, ela aparece aqui e você recebe aviso no WhatsApp."}</div>`;
     $("#lista").querySelectorAll(".fam").forEach(b=>b.onclick=()=>abrir(b.dataset.id));
@@ -302,7 +302,8 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
       ${f.email?`<span><b>E-mail</b> ${esc(f.email)}</span>`:""}
       <span><b>Endereço</b> ${esc(f.rua)} – ${esc(f.bairro)} – ${esc(f.cidade)} – ${esc(f.cep)}</span>
       ${f.alunos.map((a,i)=>`<span><b>${esc(a.nome)}</b> · ${fmtData(a.nasc)} (${idade(a.nasc)} anos) · ${esc(a.escola)} · ${esc(a.periodo)} · ${esc(a.trajeto)}${a.nasc?`<button type="button" class="mini-cartao" data-al="${i}">🎂 Cartão</button>`:""}</span>`).join("")}
-      ${f.obs?`<span><b>Obs. da família</b> ${esc(f.obs)}</span>`:""}
+      ${f.obs?`<span class="obs-adm">📝 <b>Observação da família</b> (vai no contrato): ${esc(f.obs)}</span>`:""}
+      <span id="dTabela"></span>
       <span id="dAceite"></span>
       <span><b>Cadastro</b> ${fmtData(f.dataCadastro)}${f.liberadoEm?` · <b>liberado</b> ${fmtData(f.liberadoEm)}`:""}${f.assinadoEm?` · <b>assinado</b> ${fmtData(f.assinadoEm)}`:""}</span>`;
     $("#dInfo").querySelectorAll(".mini-cartao").forEach(b=>b.onclick=()=>abrirCartao(f.id, +b.dataset.al));
@@ -334,7 +335,16 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     return {ini:+$("#xIni").value, mensalidade:pv, parcelas:n, total: num($("#xTot").value) || pv*n, dataContrato:$("#xData").value, obsInterna:$("#xObs").value.trim()};
   }
   const comDannis = f => f.assinadoDannisEm && minhaAssinatura ? {...f, assinaturaDannis: minhaAssinatura} : f;
-  function previa(){ $("#dFolha").innerHTML = contratoHTML(comDannis(atual), valores()); }
+  function previa(){ $("#dFolha").innerHTML = contratoHTML(comDannis(atual), valores()); tabela(); }
+  /* valor da tabela de preços x valor do contrato */
+  function tabela(){
+    const el = $("#dTabela"); if (!el || !atual) return;
+    const t = DT.precoTabela(atual.alunos), pv = num($("#xPv").value);
+    if (!t){ el.className = ""; el.innerHTML = `<b>Tabela</b> sem preço pra essa escola/combinação: valor combinado.`; return; }
+    const igual = Math.abs(t.valor - pv) < .005;
+    el.className = igual ? "" : "aviso-tab";
+    el.innerHTML = `<b>Tabela</b> R$ ${brl(t.valor)} (${esc(t.conta)})${igual ? " ✓" : ` · ⚠️ o contrato está com R$ ${brl(pv) || "0,00"}`}`;
+  }
   const recalc = ()=>{ const pv=num($("#xPv").value), n=+$("#xParc").value; if (pv && n && !$("#xTot").dataset.manual) $("#xTot").value = brl(pv*n); previa(); };
   $("#xIni").onchange = ()=>{ const vg = vigencia(null, +$("#xIni").value); $("#xMeses").value = vg.meses; $("#xParc").value = vg.meses; recalc(); };
   $("#xPv").oninput = recalc; $("#xParc").oninput = recalc; $("#xData").oninput = previa;

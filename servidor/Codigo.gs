@@ -80,7 +80,7 @@ function cadastrar_(d){
       Object.assign(linha, registroAceite_(linha, d.aparelho));
     }
     sh.appendRow(COLS.map(c => linha[c] == null ? "" : linha[c]));
-    avisaDono_(`${linha.tipo === "novo" ? "🆕 *Contrato novo 2027*" : "🚐 *Nova renovação 2027*"} (nº ${id})\n${linha.responsavel} – ${linha.celular}\n${temValor ? `💰 R$ ${brl_(linha.mensalidade)}/mês × ${linha.parcelas} = R$ ${brl_(linha.total)}\n` : "💰 Sem valor – colocar no admin\n"}${alunos.map(a=>`• ${a.nome} – ${a.escola}`).join("\n")}\n\n${linha.aceite_em ? "✅ A família já aceitou o contrato no app." : "⏳ A família ainda não aceitou o contrato."}\n👉 Conferir o valor e tocar no botão verde pra mandar a via final no WhatsApp:\n${SITE}admin.html#f=${id}`);
+    avisaDono_(`${linha.tipo === "novo" ? "🆕 *Contrato novo 2027*" : "🚐 *Nova renovação 2027*"} (nº ${id})\n${linha.responsavel} – ${linha.celular}\n${temValor ? `💰 R$ ${brl_(linha.mensalidade)}/mês × ${linha.parcelas} = R$ ${brl_(linha.total)}\n` : "💰 Sem valor – colocar no admin\n"}${alunos.map(a=>`• ${a.nome} – ${a.escola}`).join("\n")}\n${linha.obs ? `📝 *Observação:* ${linha.obs}\n` : ""}\n${linha.aceite_em ? "✅ A família já aceitou o contrato no app." : "⏳ A família ainda não aceitou o contrato."}\n👉 Conferir o valor e tocar no botão verde pra mandar a via final no WhatsApp:\n${SITE}admin.html#f=${id}`);
     return {ok:true, token, id, aceite: linha.aceite_em ? {em: linha.aceite_em, codigo: codigoIntegridade_(linha.aceite_hash)} : null};
   } finally { lock.releaseLock(); }
 }
@@ -131,14 +131,20 @@ function hashContrato_(o){
     String(o.responsavel||"").trim(), String(o.cpf||"").replace(/\D/g,""), String(o.rg||"").trim(),
     String(o.rua||"").trim(), String(o.bairro||"").trim(), String(o.cidade||"").trim(), String(o.cep||"").replace(/\D/g,""),
     alunos.map(a => [String(a.nome||"").trim(), String(a.nasc||"").slice(0,10), String(a.escola||"").trim(), String(a.periodo||""), String(a.trajeto||"")]),
-    ni(o.inicio_idx), n2(o.mensalidade), ni(o.parcelas), n2(o.total)]);
+    ni(o.inicio_idx), n2(o.mensalidade), ni(o.parcelas), n2(o.total)].concat(comObs_(o) ? [String(o.obs||"").trim()] : []));
   return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, txt, Utilities.Charset.UTF_8).map(b => ((b + 256) % 256).toString(16).padStart(2, "0")).join("");
+}
+/* a observação do cadastro vai no contrato desde a versão 3 do aceite; aceites mais antigos continuam conferindo sem ela */
+function comObs_(o){
+  if (!String(o.obs||"").trim()) return false;
+  if (!o.aceite_em) return true;
+  try { return Number(JSON.parse(o.aceite_valores || "{}").v) >= 3; } catch(e){ return false; }
 }
 function codigoIntegridade_(h){ return String(h || "").slice(0, 16).toUpperCase().replace(/(.{4})(?=.)/g, "$1-"); }
 function aceiteOriginal_(o){ return !!(o.aceite_em && o.aceite_hash && o.aceite_hash === hashContrato_(o)); }   // nada mudou desde o aceite
 const valoresDe_ = o => ({ini: Math.round(Number(o.inicio_idx||0)), mensalidade: Number(o.mensalidade||0), parcelas: Math.round(Number(o.parcelas||0)), total: Number(o.total||0)});
 function registroAceite_(o, aparelho){
-  return {aceite_em: agora_(), aceite_hash: hashContrato_(o), aceite_valores: JSON.stringify(valoresDe_(o)), ajuste_info: "",
+  return {aceite_em: agora_(), aceite_hash: hashContrato_(o), aceite_valores: JSON.stringify(Object.assign(valoresDe_(o), {v: 3})), ajuste_info: "",
           aceite_info: "Aceite eletrônico no app · CPF " + String(o.cpf||"") + " · " + limpa_(aparelho, 160)};
 }
 /* "Meu contrato": a família aceita (ou aceita de novo, se o valor mudou) com um toque */

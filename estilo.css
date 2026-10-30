@@ -409,3 +409,12 @@ img.van{height:auto}
 #van .f2{left:3.4%;top:50.5%;width:30%;aspect-ratio:1}
 #van.pisca .farol{animation:pisca 1.3s ease-out}
 @keyframes pisca{0%{opacity:0}7%{opacity:1}20%{opacity:0}34%{opacity:0}41%{opacity:1}56%{opacity:0}100%{opacity:0}}
+/* observações do contratante no contrato e no admin */
+.ct-obs{border:1.5px solid #c9a227;background:#fff8dc;border-radius:6px;padding:8px 12px;margin:10px 0;break-inside:avoid}
+.ct-obs b{font-size:12px;letter-spacing:.3px}
+.ct-obs p{margin:4px 0 0}
+.obs-adm{display:block;background:#fff4c2;border:2px solid #f0b400;border-radius:10px;padding:8px 12px}
+.preco-tab{display:grid;gap:4px;background:var(--fundo-2,#f4eff6);border-radius:12px;padding:12px 14px}
+.preco-tab b.v{font-family:var(--f-display);font-style:italic;font-size:26px;color:var(--roxo)}
+.aviso-tab{display:block;background:#ffe9e0;border:2px solid #f4791f;border-radius:10px;padding:8px 12px}
+.fam .obs-lista{color:#8a5a00;font-weight:600}

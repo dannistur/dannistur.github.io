@@ -22,9 +22,44 @@
     {id:"franceschini", nome:"João Franceschini",      cor:"#712473"},
     {id:"sonho",        nome:"Sonho Dourado",          cor:"#d9a400", clara:true},
     {id:"algodao",      nome:"Algodão Doce",           cor:"#e84c8b"},
-    {id:"objetivo",     nome:"Objetivo",               cor:"#c2332b"},
+    {id:"proeducare",   nome:"Pró Educare",            cor:"#c2332b"},
+    {id:"sabidinho",    nome:"Sabidinho",              cor:"#f4791f"},
+    {id:"pio12",        nome:"Pio XII",                cor:"#1d6fb8"},
+    {id:"vito",         nome:"Vito",                   cor:"#1d8a4e"},
     {id:"fam",          nome:"Faculdade FAM",          cor:"#2b2630"}
   ];
+
+  /* tabela de preços 2027 (mensalidade): ida e volta, só ida, só volta e 2 irmãos no mesmo horário (ida e volta).
+     Escola sem preço aqui (FAM, outra escola) → a família digita o valor combinado. */
+  const P = (iv, uma, irmaos) => ({iv, ida: uma, volta: uma, irmaos});
+  const PRECOS = {
+    educativa: P(250, 200, 460), network: P(250, 200, 460), proeducare: P(250, 200, 460),
+    alkimim: P(250, 200, 440), franceschini: P(250, 200, 440),
+    candido: P(225, 185, 400),
+    sabidinho: P(220, 185, 400), borboletinha: P(220, 185, 400), vito: P(220, 185, 400),
+    crescendo: P(250, 200, 430), algodao: P(250, 200, 430), pio12: P(250, 200, 430),
+    sonho: P(230, 190, null)
+  };
+  const idEscola = nome => (ESCOLAS.find(e => e.nome === nome) || {}).id;
+  const precoAluno = (pr, trajeto) => trajeto === "Só ida" ? pr.ida : trajeto === "Só volta" ? pr.volta : pr.iv;
+  /* valor da mensalidade pela tabela: {valor, conta} ou null se algum aluno não tem preço na tabela */
+  function precoTabela(alunos){
+    if (!alunos || !alunos.length) return null;
+    const itens = alunos.map(a => ({a, pr: PRECOS[idEscola(a.escola)]}));
+    if (itens.some(i => !i.pr)) return null;
+    const usados = new Set(), partes = [];
+    let valor = 0;
+    // 2 irmãos na mesma escola, mesmo período, ida e volta → preço de irmãos
+    for (let i = 0; i < itens.length; i++){
+      if (usados.has(i) || itens[i].a.trajeto !== "Ida e volta") continue;
+      const j = itens.findIndex((x, k) => k > i && !usados.has(k) && x.a.trajeto === "Ida e volta" && x.a.escola === itens[i].a.escola && x.a.periodo === itens[i].a.periodo);
+      if (j < 0) continue;
+      if (itens[i].pr.irmaos == null) return null;   // escola sem preço de irmãos: valor combinado
+      usados.add(i); usados.add(j); valor += itens[i].pr.irmaos; partes.push(`2 irmãos ${itens[i].a.escola} R$ ${brl(itens[i].pr.irmaos)}`);
+    }
+    itens.forEach((it, i) => { if (usados.has(i)) return; const v = precoAluno(it.pr, it.a.trajeto); valor += v; partes.push(`${it.a.escola} ${it.a.trajeto.toLowerCase()} R$ ${brl(v)}`); });
+    return {valor, conta: partes.join(" + ")};
+  }
 
   const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
   const INI = 2027*12+1, FIM = 2028*12+0;            // fevereiro/2027 → janeiro/2028
@@ -118,6 +153,7 @@
       <p class="ct-cl"><b>Cláusula 11.</b> Os meses de férias serão cobrados integralmente conforme as parcelas, independentemente do mês contratado (não trabalhamos em clube de férias).</p>
       <p class="ct-cl"><b>Cláusula 12.</b> Falta do aluno por doenças, viagens, passeios ou motivos particulares não gera desconto na mensalidade, pois a vaga permanecerá reservada e o transporte rodando normalmente.</p>
       <p class="ct-cl"><b>Cláusula 13.</b> As partes admitem como válida, nos termos do <span style="white-space:nowrap">art. 10, §2º,</span> da <span style="white-space:nowrap">Medida Provisória nº 2.200-2/2001</span>, a contratação por aceite eletrônico no aplicativo da Danni's Tur, com identificação do CONTRATANTE por CPF e data de nascimento do aluno e registro de data, hora e aparelho utilizado.</p>
+      ${String(f.obs||"").trim() ? `<div class="ct-obs"><b>OBSERVAÇÕES INFORMADAS PELO CONTRATANTE NO CADASTRO</b><p>${esc(String(f.obs).trim()).replace(/\n/g,"<br>")}</p></div>` : ""}
       <p class="ct-cl"><b>Cláusula 14.</b> Fica eleito o foro da Comarca de Sumaré, com prevalência sobre qualquer outro, por mais privilegiado que seja, para dirimir todas as dúvidas que possam advir de qualquer cláusula deste contrato. E, por estarem assim justos e contratados e de pleno acordo com todas as cláusulas estipuladas, assinam o presente instrumento particular em duas vias de igual teor e forma e sem rasura.</p>
       <p>${dataExtenso(x.dataContrato)}</p>
       <p><b>Ciente e de acordo,</b></p>
@@ -297,7 +333,7 @@
     return {ajusta, feita, imagem, limpa, desfaz, vazio: () => !tracos.length};
   }
 
-  window.DT = {padAssinatura, API, ZAP_DANNIS, CONTRATADO, ESCOLAS, MESES, INI, FIM, nomeMes, esc, fmtData, brl, num, hojeISO, vigencia, idade,
+  window.DT = {padAssinatura, API, ZAP_DANNIS, CONTRATADO, ESCOLAS, PRECOS, precoTabela, MESES, INI, FIM, nomeMes, esc, fmtData, brl, num, hojeISO, vigencia, idade,
                maskCpf, maskTel, cpfValido, soDigitos, zapLink, contratoHTML, contratoPDF, nomePDF, carregaPdfLib, fmtAjuste, api, preparaImpressao, linkContrato, musicaFundo};
   if (!/admin\.html/.test(location.pathname)){
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", musicaFundo); else musicaFundo();
