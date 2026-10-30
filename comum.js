@@ -6,7 +6,7 @@
   const API = "https://script.google.com/macros/s/AKfycbyHx9esXdbXC2xlKoavjhv3neJMw7M59cO9pm-rglWzvLLa5tPJrIEy3n4SOAsYFNuvIw/exec";
   const ZAP_DANNIS = "5519997781210";
   /* Pix da Danni's Tur (passeios e eventos). Sem chave → a página mostra "chave em breve". */
-  const PIX = {chave: "", nome: "", cidade: "SUMARE"};
+  const PIX = {chave: "18366932000118", chaveVer: "18.366.932/0001-18", nome: "DANIEL ALVES GESUALDO ME", titular: "Daniel Alves Gesualdo ME (Danni's Tur)", cidade: "SUMARE"};
 
   const CONTRATADO = {
     razao:"DANIEL ALVES GESUALDO – ME", fantasia:"DANNI'S TUR", cnpj:"18.366.932/0001-18",

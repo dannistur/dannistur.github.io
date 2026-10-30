@@ -437,3 +437,10 @@ img.van{height:auto}
 .acao.cine-btn::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.28) 45%,transparent 60%);transform:translateX(-100%);animation:brilho-cine 3.2s ease-in-out infinite}
 @keyframes brilho-cine{60%,100%{transform:translateX(100%)}}
 @media (prefers-reduced-motion:reduce){.acao.cine-btn::after{animation:none;display:none}}
+/* capa do passeio do cinema na tela inicial */
+.cine-capa{grid-column:1/-1;position:relative;display:block;border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(40,10,50,.35);text-decoration:none}
+.cine-capa img{display:block;width:100%;height:auto}
+.cine-capa{background:#ffc61a}
+.cine-cta{display:block;text-align:center;color:#3f1142;font-weight:800;font-size:16px;padding:10px 12px;animation:cta-pulsa 1.6s ease-in-out infinite}
+@keyframes cta-pulsa{50%{transform:scale(1.04)}}
+@media (prefers-reduced-motion:reduce){.cine-cta{animation:none}}

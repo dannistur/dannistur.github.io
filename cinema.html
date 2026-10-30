@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Passeio da Van · Cinema 28/11</title>
-<meta name="description" content="Passeio da van pro Cine Sumaré no dia 28 de novembro. A van leva e busca. R$ 40 com lanche e bebida.">
+<meta name="description" content="Passeio da van pro Cine Sumaré no dia 28 de novembro. A van leva e busca. R$ 40 com pipoca e bebida.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="🚐 Nosso tradicional passeio da van chegou! Esse ano vai ser no cinema 🎬">
-<meta property="og:description" content="28 de novembro, sala fechada no Cine Sumaré só pras crianças da van. A van leva e busca! R$ 40 com lanche e bebida. Inscreva seu filho pelo app.">
-<meta property="og:image" content="https://murilodannis123-lang.github.io/dannis-tur/og-cinema.jpg?v=3">
+<meta property="og:description" content="28 de novembro, sala fechada no Cine Sumaré só pras crianças da van. A van leva e busca! R$ 40 com pipoca e bebida. Inscreva seu filho pelo app.">
+<meta property="og:image" content="https://murilodannis123-lang.github.io/dannis-tur/og-cinema.jpg?v=4">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:url" content="https://murilodannis123-lang.github.io/dannis-tur/cinema.html">
@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&family=Lobster&display=swap">
-<link rel="stylesheet" href="estilo.css?v=31">
+<link rel="stylesheet" href="estilo.css?v=33">
 <style>
 body{margin:0}
 .cine{padding:8px 0 110px}
@@ -61,6 +61,7 @@ body{margin:0}
 .ingresso .sim i{font-style:normal;font-size:26px}
 /* perguntas */
 .faq{display:grid;gap:8px}
+.faq-tit{font-size:22px;margin:4px 0 2px}
 .faq details{background:var(--cartao);border:1px solid var(--linha);border-radius:14px;padding:12px 14px}
 .faq summary{font-weight:700;cursor:pointer}
 .faq p{margin:8px 0 0;color:var(--tinta-2)}
@@ -113,16 +114,18 @@ body{margin:0}
       <div class="dados-ev">
         <div><b>28 de novembro</b><span>sábado</span></div>
         <div><b>Cine Sumaré</b><span id="horario">horário: avisamos no grupo</span></div>
-        <div class="preco"><b>R$ 40</b><span>por criança, com lanche e bebida</span></div>
+        <div class="preco"><b>R$ 40</b><span>por criança, com pipoca e bebida</span></div>
       </div>
       <div class="picote" aria-hidden="true"></div>
       <div class="sim"><i aria-hidden="true">🚐</i><span>A van leva e busca!</span></div>
     </section>
 
     <div class="faq">
+      <h2 class="faq-tit">Perguntas frequentes</h2>
       <details><summary>A van vai levar?</summary><p>Sim! A van da Danni's Tur leva e busca. A gente monta a rota de cada van com os inscritos.</p></details>
       <details><summary>Vai ter mais gente na sala?</summary><p>Não. Vamos fechar uma sala do Cine Sumaré só pras crianças da van da Danni's Tur.</p></details>
-      <details><summary>O que está incluso nos R$ 40?</summary><p>O cinema, o lanche e a bebida, além do transporte de ida e volta.</p></details>
+      <details><summary>O que está incluso nos R$ 40?</summary><p>A sessão de cinema na sala fechada, <b>pipoca + bebida</b> e a van levando e buscando.</p></details>
+      <details><summary>Quem pode ir?</summary><p>As crianças que usam a van da Danni's Tur. Irmãos podem ir juntos, desde que também usem a van.</p></details>
       <details><summary>Até quando pagar?</summary><p>Até <b>20 de novembro</b>, pelo Pix desta página. Depois de pagar, mande o comprovante no nosso WhatsApp pra garantir a vaga.</p></details>
     </div>
 
@@ -138,8 +141,9 @@ body{margin:0}
       </fieldset>
       <fieldset>
         <legend>Criança(s)</legend>
+        <p class="dica" style="margin:0 0 10px">Só para crianças que usam a van da Danni's Tur.</p>
         <div id="criancas" style="display:grid;gap:12px"></div>
-        <button class="btn btn-sec" type="button" id="addCrianca" style="margin-top:12px">+ Adicionar irmão(ã)</button>
+        <button class="btn btn-sec" type="button" id="addCrianca" style="margin-top:12px">+ Adicionar irmão(ã) que usa a van</button>
       </fieldset>
       <div class="total-cine"><span id="totalTxt">1 criança</span><b id="totalV">R$ 40,00</b></div>
       <p class="msg-err" id="cErr" role="alert"></p>
@@ -167,7 +171,7 @@ body{margin:0}
   </div>
 </main>
 
-<script src="comum.js?v=14"></script>
+<script src="comum.js?v=15"></script>
 <script src="qrcode.js?v=1"></script>
 <script>
 (function(){
@@ -209,8 +213,8 @@ body{margin:0}
       <div class="campo"><label for="${id}e">Escola</label><select id="${id}e" class="k-escola">${opcoes}</select></div>
       <div class="campo k-outra-wrap" hidden><label for="${id}o">Nome da escola</label><input type="text" id="${id}o" class="k-outra"></div>
       <div class="campo"><span style="font-weight:600;font-size:14px" id="${id}pl">Período</span>
-        <div class="chips k-per" role="radiogroup" aria-labelledby="${id}pl">${["Manhã","Tarde","Integral","Noite"].map(p => `<label class="chip"><input type="radio" name="${id}p" value="${p}"><span>${p}</span></label>`).join("")}</div></div>
-      <div class="campo"><span style="font-weight:600;font-size:14px" id="${id}tl">Van (tio ou tia)</span>
+        <div class="chips k-per" role="radiogroup" aria-labelledby="${id}pl">${["Manhã","Tarde","Integral"].map(p => `<label class="chip"><input type="radio" name="${id}p" value="${p}"><span>${p}</span></label>`).join("")}</div></div>
+      <div class="campo"><span style="font-weight:600;font-size:14px" id="${id}tl">Com qual tio(a) a criança vai pra escola?</span>
         <div class="tios k-tio" role="radiogroup" aria-labelledby="${id}tl">${TIOS.map(t => `<label class="tio"><input type="radio" name="${id}t" value="${t.nome}"><span><img src="${t.foto}" alt="" loading="lazy">${t.nome}</span></label>`).join("")}</div></div>`;
     const sel = d.querySelector(".k-escola");
     sel.onchange = () => { d.querySelector(".k-outra-wrap").hidden = sel.value !== "outra"; };
@@ -243,7 +247,7 @@ body{margin:0}
       [[c.querySelector(".k-per"), per], [c.querySelector(".k-tio"), tio]].forEach(([g, v]) => { g.style.outline = v ? "none" : "2px solid var(--erro)"; g.style.outlineOffset = "4px"; g.style.borderRadius = "14px"; if (!v){ ok = false; primeiro = primeiro || g; } });
       return {nome: nome.value.trim(), escola: es.value === "outra" ? outra.value.trim() : es.value, periodo: per ? per.value : "", tio: tio ? tio.value : ""};
     });
-    if (!ok){ $("#cErr").textContent = "Preencha os campos destacados (nome completo, escola, período e a van de cada criança)."; primeiro?.scrollIntoView({behavior:"smooth", block:"center"}); return; }
+    if (!ok){ $("#cErr").textContent = "Preencha os campos destacados (nome completo, escola, período e o tio(a) da van de cada criança)."; primeiro?.scrollIntoView({behavior:"smooth", block:"center"}); return; }
     $("#cErr").textContent = "";
     const b = $("#cEnviar"); b.disabled = true; b.textContent = "Enviando…";
     try {
@@ -270,7 +274,7 @@ body{margin:0}
       $("#qr").innerHTML = q.createSvgTag({cellSize: 6, margin: 2, scalable: true});
       $("#copiaCola").onclick = () => copia(codigo, "Código Pix copiado! Abra o app do banco e escolha Pix copia e cola.");
       $("#copiaChave").onclick = () => copia(PIX.chave, "Chave Pix copiada!");
-      $("#chaveTxt").textContent = `Chave Pix: ${PIX.chave}${PIX.nome ? " · " + PIX.nome : ""}`;
+      $("#chaveTxt").textContent = `Chave Pix (CNPJ): ${PIX.chaveVer || PIX.chave} · ${PIX.titular || PIX.nome}`;
     } else $("#chaveTxt").textContent = "A chave Pix vai aparecer aqui em breve. Se preferir, chame a gente no WhatsApp.";
     const msg = `Olá! Segue o comprovante do Pix do *cinema do dia 28/11* 🎬 (inscrição ${insc.grupo}):\n${insc.criancas.map(c => `• ${c.nome} – ${c.escola} ${c.periodo} – ${c.tio}`).join("\n")}\nTotal: R$ ${brl(insc.total)}\n\n(anexe o comprovante aqui 📎)`;
     $("#mandaComp").href = zapLink(ZAP_DANNIS, msg);
