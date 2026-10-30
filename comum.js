@@ -344,7 +344,18 @@
 
   window.DT = {padAssinatura, API, ZAP_DANNIS, CONTRATADO, ESCOLAS, PRECOS, BAIRROS_FAM, precoFam, precoTabela, MESES, INI, FIM, nomeMes, esc, fmtData, brl, num, hojeISO, vigencia, idade,
                maskCpf, maskTel, cpfValido, soDigitos, zapLink, contratoHTML, contratoPDF, nomePDF, carregaPdfLib, fmtAjuste, api, preparaImpressao, linkContrato, musicaFundo};
+  /* botão flutuante de dúvidas no WhatsApp da Danni's Tur (todas as telas da família) */
+  function zapDuvidas(){
+    if (document.getElementById("zapDuvidas")) return;
+    const a = document.createElement("a");
+    a.id = "zapDuvidas"; a.className = "zap-duvidas"; a.target = "_blank"; a.rel = "noopener";
+    a.href = zapLink(ZAP_DANNIS, "Olá! Vim pelo app da Danni's Tur e tenho uma dúvida: ");
+    a.setAttribute("aria-label", "Dúvidas? Fale com a Danni's Tur no WhatsApp");
+    a.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2a8.6 8.6 0 0 0-7.4 13l-1.1 4 4.1-1.1A8.6 8.6 0 1 0 12 3.2z" fill="none" stroke="#fff" stroke-width="1.9" stroke-linejoin="round"/><path d="M9.2 8.2c.3-.3.7-.3.9 0l.8 1.5c.1.3 0 .5-.2.7l-.5.5c.5 1.1 1.4 2 2.5 2.5l.5-.5c.2-.2.5-.3.7-.2l1.5.8c.3.2.3.6 0 .9l-.6.7c-.5.5-1.3.6-2 .3a8 8 0 0 1-4.2-4.2c-.3-.7-.2-1.5.3-2z" fill="#fff"/></svg><span>Dúvidas?</span>';
+    document.body.appendChild(a);
+  }
   if (!/admin\.html/.test(location.pathname)){
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", musicaFundo); else musicaFundo();
+    const inicia = () => { musicaFundo(); zapDuvidas(); };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", inicia); else inicia();
   }
 })();
