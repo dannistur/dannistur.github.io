@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=27">
+<link rel="stylesheet" href="estilo.css?v=28">
 <style>body{margin:0}</style>
 </head>
 <body>
@@ -51,6 +51,10 @@
       <section id="e1" aria-labelledby="t1" style="display:grid;gap:16px">
         <h3 id="t1" style="font-size:22px">Qual a escola do aluno em 2027?</h3>
         <div class="escolas" id="escolas"></div>
+        <div class="campo" id="famWrap" hidden>
+          <span style="font-weight:700;font-size:17px">Qual o seu bairro?</span>
+          <div class="bairros" id="bairrosFam"></div>
+        </div>
         <div class="campo" id="outraWrap" hidden>
           <label for="outraEscola">Nome da escola</label>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -98,7 +102,6 @@
             <span>Pela tabela da Danni's Tur 2027:</span>
             <b class="v" id="precoV"></b>
             <small class="dica" id="precoConta"></small>
-            <small class="dica"><b>Combinou outro valor por telefone?</b> Escreva nas observações aqui embaixo.</small>
           </div>
           <div class="campo" id="valorLivre"><label for="rValor">Mensalidade combinada com a Danni's Tur (R$)</label>
             <input type="text" id="rValor" inputmode="decimal" placeholder="0,00" autocomplete="off">
@@ -107,7 +110,7 @@
 
         <fieldset>
           <legend>Observações <span class="opc" style="font-family:var(--f-corpo);font-size:14px;font-weight:400;color:var(--tinta-2)">(opcional)</span></legend>
-          <div class="campo"><label for="obs" class="sr">Observações</label><textarea id="obs" name="recado-livre" rows="3" autocomplete="off" data-lpignore="true" placeholder="Ex.: valor combinado por telefone, horário diferente, outro ponto de embarque…"></textarea></div>
+          <div class="campo"><label for="obs" class="sr">Observações</label><textarea id="obs" name="recado-livre" rows="3" autocomplete="off" data-lpignore="true" placeholder="Ex.: horário diferente, outro ponto de embarque, mudança de casa…"></textarea></div>
         </fieldset>
 
         <p class="msg-err" id="e2Err" role="alert"></p>
@@ -168,7 +171,7 @@
 
 <div id="printArea"><p style="font:16px Arial;padding:40px;text-align:center">O contrato só pode ser impresso depois que a Danni's Tur liberar, pelo link do seu contrato.</p></div>
 
-<script src="comum.js?v=11"></script>
+<script src="comum.js?v=12"></script>
 <script>
 (function(){
   const $ = s => document.querySelector(s);
@@ -214,10 +217,16 @@
     if (e.cor) b.style.setProperty("--c", e.cor);
     b.textContent = e.nome;
     b.onclick = ()=>{
-      if (e.id==="outra"){ $("#outraWrap").hidden=false; $("#outraEscola").focus(); return; }
-      escolaSel = e.id; $("#outraWrap").hidden = true; irDados();
+      if (e.id==="outra"){ $("#famWrap").hidden=true; $("#outraWrap").hidden=false; $("#outraEscola").focus(); return; }
+      if (e.id==="fam"){ $("#outraWrap").hidden=true; $("#famWrap").hidden=false; $("#famWrap").scrollIntoView({behavior:"smooth", block:"center"}); return; }   // FAM: o preço depende do bairro
+      escolaSel = e.id; $("#outraWrap").hidden = true; $("#famWrap").hidden = true; irDados();
     };
     $("#escolas").appendChild(b);
+  });
+  [...DT.BAIRROS_FAM.flatMap(g => g.bairros).sort((x, y) => x.localeCompare(y, "pt-BR")), "Outro bairro"].forEach(nome=>{
+    const b = document.createElement("button"); b.type = "button"; b.className = "bairro" + (nome === "Outro bairro" ? " outro" : ""); b.textContent = nome;
+    b.onclick = ()=>{ escolaSel = "fam"; $("#rBairro").value = nome === "Outro bairro" ? "" : nome; $("#famWrap").hidden = true; irDados(); };
+    $("#bairrosFam").appendChild(b);
   });
   $("#irOutra").onclick = ()=>{
     if (!$("#outraEscola").value.trim()){ $("#e1Err").textContent="Digite o nome da escola."; return; }
@@ -342,7 +351,7 @@
     });
   }
   function atualizaPreco(){
-    const t = DT.precoTabela(alunosDoForm()), vg = DT.vigencia(hojeISO()), inp = $("#rValor");
+    const t = DT.precoTabela(alunosDoForm(), $("#rBairro").value), vg = DT.vigencia(hojeISO()), inp = $("#rValor");
     $("#precoTab").hidden = !t; $("#valorLivre").hidden = !!t;
     if (t){
       inp.value = DT.brl(t.valor); inp.dataset.auto = "1"; marca(inp, true);
@@ -351,6 +360,7 @@
     } else if (inp.dataset.auto){ inp.value = ""; inp.dataset.auto = ""; inp.dispatchEvent(new Event("input")); }
   }
   $("#alunos").addEventListener("change", atualizaPreco);
+  $("#rBairro").addEventListener("input", atualizaPreco);
   $("#alunos").addEventListener("input", e=>{ if (e.target.classList.contains("a-outra")) atualizaPreco(); });
   new MutationObserver(atualizaPreco).observe($("#alunos"), {childList:true});
   atualizaPreco();
@@ -392,7 +402,7 @@
   };
   $("#novo").onclick = ()=>{
     $("#e2").reset(); $("#rCidade").value="Sumaré"; $("#alunos").innerHTML=""; nAluno=0; escolaSel=null; addAluno();
-    $("#outraWrap").hidden=true; $("#outraEscola").value=""; mostrar(1);
+    $("#outraWrap").hidden=true; $("#famWrap").hidden=true; $("#outraEscola").value=""; mostrar(1);
   };
 
 

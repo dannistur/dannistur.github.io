@@ -40,12 +40,21 @@
     crescendo: P(250, 200, 430), algodao: P(250, 200, 430), pio12: P(250, 200, 430),
     sonho: P(230, 190, null)
   };
+  /* Faculdade FAM: o preço depende do bairro de embarque (ida e volta) */
+  const BAIRROS_FAM = [
+    {preco: 370, bairros: ["Centro", "Jardim Makarenko", "Vila Miranda", "Jardim Marquisolo", "Casarão", "Parque Franceschini", "Planalto do Sol", "Ravanhani", "Parque da Floresta"]},
+    {preco: 360, bairros: ["João Paulo II", "Consteca", "Voughan", "Jardim das Palmeiras", "Santa Madalena", "João de Vasconcellos", "Vila Yolanda", "Zilda Natel", "Portal do Lago"]}
+  ];
+  const chaveBairro = b => String(b || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/\b(jardim|jd|vila|vl|parque|pq|residencial|res|conjunto|bairro)\b\.?/g, " ").replace(/\bii\b/g, "2").replace(/vaughan/g, "voughan").replace(/vasconcelos/g, "vasconcellos").replace(/[^a-z0-9]/g, "");
+  const precoFam = bairro => { const k = chaveBairro(bairro); if (!k) return null; const g = BAIRROS_FAM.find(g => g.bairros.some(b => chaveBairro(b) === k)); return g ? g.preco : null; };
   const idEscola = nome => (ESCOLAS.find(e => e.nome === nome) || {}).id;
   const precoAluno = (pr, trajeto) => trajeto === "Só ida" ? pr.ida : trajeto === "Só volta" ? pr.volta : pr.iv;
   /* valor da mensalidade pela tabela: {valor, conta} ou null se algum aluno não tem preço na tabela */
-  function precoTabela(alunos){
+  function precoTabela(alunos, bairro){
     if (!alunos || !alunos.length) return null;
-    const itens = alunos.map(a => ({a, pr: PRECOS[idEscola(a.escola)]}));
+    const pf = precoFam(bairro);
+    const itens = alunos.map(a => ({a, pr: idEscola(a.escola) === "fam" ? (pf && a.trajeto === "Ida e volta" ? P(pf, null, null) : null) : PRECOS[idEscola(a.escola)]}));
     if (itens.some(i => !i.pr)) return null;
     const usados = new Set(), partes = [];
     let valor = 0;
@@ -333,7 +342,7 @@
     return {ajusta, feita, imagem, limpa, desfaz, vazio: () => !tracos.length};
   }
 
-  window.DT = {padAssinatura, API, ZAP_DANNIS, CONTRATADO, ESCOLAS, PRECOS, precoTabela, MESES, INI, FIM, nomeMes, esc, fmtData, brl, num, hojeISO, vigencia, idade,
+  window.DT = {padAssinatura, API, ZAP_DANNIS, CONTRATADO, ESCOLAS, PRECOS, BAIRROS_FAM, precoFam, precoTabela, MESES, INI, FIM, nomeMes, esc, fmtData, brl, num, hojeISO, vigencia, idade,
                maskCpf, maskTel, cpfValido, soDigitos, zapLink, contratoHTML, contratoPDF, nomePDF, carregaPdfLib, fmtAjuste, api, preparaImpressao, linkContrato, musicaFundo};
   if (!/admin\.html/.test(location.pathname)){
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", musicaFundo); else musicaFundo();
