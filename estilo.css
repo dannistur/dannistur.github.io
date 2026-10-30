@@ -431,3 +431,9 @@ img.van{height:auto}
 .zap-duvidas svg{width:24px;height:24px;flex:none}
 .zap-duvidas:hover{background:#178a45}
 @media print{.zap-duvidas{display:none!important}}
+/* destaque do passeio do cinema na tela inicial */
+.acao.cine-btn{grid-column:1/-1;background:linear-gradient(120deg,#3f1142,#712473 55%,#f4791f);position:relative;overflow:hidden}
+.acao.cine-btn .ic{font-size:26px;background:rgba(255,255,255,.18)}
+.acao.cine-btn::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.28) 45%,transparent 60%);transform:translateX(-100%);animation:brilho-cine 3.2s ease-in-out infinite}
+@keyframes brilho-cine{60%,100%{transform:translateX(100%)}}
+@media (prefers-reduced-motion:reduce){.acao.cine-btn::after{animation:none;display:none}}

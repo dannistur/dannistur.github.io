@@ -39,6 +39,10 @@ function doPost(e){
       case "admin_status":     admin_(req); return json_(mudaStatus_(req));
       case "admin_minha_assinatura": admin_(req); return json_(minhaAssinatura_(req));
       case "admin_assinar_dannis": admin_(req); return json_(assinarDannis_(req));
+      case "cinema_inscrever": return json_(cineInscrever_(req.dados));
+      case "admin_cinema":     admin_(req); return json_(cineLista_());
+      case "admin_cinema_pago": admin_(req); return json_(cineMarca_(req, "pago"));
+      case "admin_cinema_cancelar": admin_(req); return json_(cineMarca_(req, "cancelado"));
       case "admin_teste_zap":  admin_(req); return json_({ok:true, enviado: avisaDono_("✅ Teste: os avisos da Danni's Tur estão chegando no seu WhatsApp.")});
       default:                 return json_({ok:false, erro:"Ação desconhecida"});
     }
@@ -350,6 +354,67 @@ function zerarTestes(){
   const sh = aba_(), n = sh.getLastRow();
   if (n > 1) sh.deleteRows(2, n - 1);
   return "Planilha zerada: " + Math.max(0, n - 1) + " linha(s) de teste apagada(s).";
+}
+
+/* ===================== passeio do cinema (28/11) ===================== */
+/* uma linha por criança; "grupo" junta as crianças inscritas juntas (mesmo Pix) */
+const CINE_ABA = "Cinema 28-11";
+const CINE_COLS = ["id","grupo","criado_em","responsavel","celular","crianca","escola","periodo","tio","valor","pago","pago_em","cancelado"];
+const CINE_VALOR = 40;
+const TIOS = ["Tio Daniel","Tia Joyce","Tio Luiz","Tia Cintia"];
+function cineAba_(){
+  const ss = planilha_(); let sh = ss.getSheetByName(CINE_ABA);
+  if (!sh){ sh = ss.insertSheet(CINE_ABA); sh.getRange(1,1,1,CINE_COLS.length).setValues([CINE_COLS]).setFontWeight("bold").setBackground("#712473").setFontColor("#ffffff"); sh.setFrozenRows(1); }
+  return sh;
+}
+const cineObj_ = r => Object.fromEntries(CINE_COLS.map((c, i) => [c, r[i] instanceof Date ? Utilities.formatDate(r[i], FUSO, "yyyy-MM-dd'T'HH:mm:ss") : r[i]]));
+function cineInscrever_(d){
+  d = d || {};
+  const resp = limpa_(d.responsavel, 100), cel = limpa_(d.celular, 20);
+  if (resp.length < 3) throw erro_("Digite o nome do responsável.");
+  if (String(cel).replace(/\D/g, "").length < 10) throw erro_("Digite o celular com DDD.");
+  const kids = (Array.isArray(d.criancas) ? d.criancas : []).slice(0, 6).map(c => ({nome: limpa_(c.nome, 80), escola: limpa_(c.escola, 60), periodo: limpa_(c.periodo, 20), tio: limpa_(c.tio, 20)}));
+  if (!kids.length) throw erro_("Coloque pelo menos uma criança.");
+  kids.forEach(c => {
+    if (c.nome.split(/\s+/).length < 2) throw erro_("Coloque o nome completo de cada criança.");
+    if (!c.escola) throw erro_("Escolha a escola de " + c.nome.split(" ")[0] + ".");
+    if (TIOS.indexOf(c.tio) < 0) throw erro_("Escolha a van (tio ou tia) de " + c.nome.split(" ")[0] + ".");
+  });
+  const cache = CacheService.getScriptCache(), k = "cine_" + String(cel).replace(/\D/g, ""), n = Number(cache.get(k) || 0);
+  if (n >= 5) throw erro_("Muitas inscrições seguidas desse celular. Fale com a Danni's Tur no WhatsApp.");
+  cache.put(k, String(n + 1), 900);
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const sh = cineAba_(), vals = sh.getDataRange().getValues();
+    let id = 0; for (let i = 1; i < vals.length; i++) id = Math.max(id, Number(vals[i][0]) || 0);
+    const grupo = "C" + (id + 1), agora = agora_();
+    kids.forEach((c, i) => sh.appendRow(CINE_COLS.map(col => ({id: id + 1 + i, grupo, criado_em: agora, responsavel: resp, celular: cel, crianca: c.nome, escola: c.escola, periodo: c.periodo, tio: c.tio, valor: CINE_VALOR, pago: "", pago_em: "", cancelado: ""})[col])));
+    const total = CINE_VALOR * kids.length;
+    avisaDono_(`🎬 *Cinema 28/11 – nova inscrição* (${grupo})\n${resp} – ${cel}\n${kids.map(c => `• ${c.nome} – ${c.escola} ${c.periodo} – ${c.tio}`).join("\n")}\n💰 R$ ${brl_(total)} (aguardando comprovante)\n👉 ${SITE}admin.html#cinema`);
+    return {ok: true, grupo, total, criancas: kids.length};
+  } finally { lock.releaseLock(); }
+}
+function cineLista_(){
+  const sh = planilha_().getSheetByName(CINE_ABA);
+  const lista = sh ? sh.getDataRange().getValues().slice(1).map(cineObj_).filter(o => o.id !== "" && !o.cancelado) : [];
+  return {ok: true, lista, valor: CINE_VALOR, tios: TIOS};
+}
+/* marca (ou desmarca) pago / cancelado: por grupo inteiro ou por criança */
+function cineMarca_(req, campo){
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const sh = cineAba_(), vals = sh.getDataRange().getValues(), cg = CINE_COLS.indexOf("grupo"), cc = CINE_COLS.indexOf(campo), ce = CINE_COLS.indexOf("pago_em");
+    let n = 0;
+    for (let i = 1; i < vals.length; i++){
+      if ((req.grupo && vals[i][cg] === req.grupo) || (req.id && String(vals[i][0]) === String(req.id))){
+        sh.getRange(i + 1, cc + 1).setValue(req.valor ? "sim" : "");
+        if (campo === "pago") sh.getRange(i + 1, ce + 1).setValue(req.valor ? agora_() : "");
+        n++;
+      }
+    }
+    if (!n) throw erro_("Inscrição não encontrada.");
+    return cineLista_();
+  } finally { lock.releaseLock(); }
 }
 
 /* ===================== utilidades ===================== */

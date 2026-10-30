@@ -5,6 +5,8 @@
   /* Endereço do servidor (Apps Script). Fica vazio até a planilha ser configurada. */
   const API = "https://script.google.com/macros/s/AKfycbyHx9esXdbXC2xlKoavjhv3neJMw7M59cO9pm-rglWzvLLa5tPJrIEy3n4SOAsYFNuvIw/exec";
   const ZAP_DANNIS = "5519997781210";
+  /* Pix da Danni's Tur (passeios e eventos). Sem chave → a página mostra "chave em breve". */
+  const PIX = {chave: "", nome: "", cidade: "SUMARE"};
 
   const CONTRATADO = {
     razao:"DANIEL ALVES GESUALDO – ME", fantasia:"DANNI'S TUR", cnpj:"18.366.932/0001-18",
@@ -342,8 +344,21 @@
     return {ajusta, feita, imagem, limpa, desfaz, vazio: () => !tracos.length};
   }
 
-  window.DT = {padAssinatura, API, ZAP_DANNIS, CONTRATADO, ESCOLAS, PRECOS, BAIRROS_FAM, precoFam, precoTabela, MESES, INI, FIM, nomeMes, esc, fmtData, brl, num, hojeISO, vigencia, idade,
+  window.DT = {padAssinatura, API, ZAP_DANNIS, PIX, pixCopiaCola, CONTRATADO, ESCOLAS, PRECOS, BAIRROS_FAM, precoFam, precoTabela, MESES, INI, FIM, nomeMes, esc, fmtData, brl, num, hojeISO, vigencia, idade,
                maskCpf, maskTel, cpfValido, soDigitos, zapLink, contratoHTML, contratoPDF, nomePDF, carregaPdfLib, fmtAjuste, api, preparaImpressao, linkContrato, musicaFundo};
+  /* Pix "copia e cola" (BR Code estático, padrão do Banco Central) com valor */
+  function pixCopiaCola({chave, nome, cidade, valor, txid}){
+    const limpa = (t, n) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9 .\-]/g, "").toUpperCase().trim().slice(0, n);
+    const f = (id, v) => id + String(v.length).padStart(2, "0") + v;
+    const conta = f("00", "br.gov.bcb.pix") + f("01", String(chave).trim());
+    let p = f("00", "01") + f("26", conta) + f("52", "0000") + f("53", "986") + (valor ? f("54", Number(valor).toFixed(2)) : "") +
+            f("58", "BR") + f("59", limpa(nome, 25) || "DANNIS TUR") + f("60", limpa(cidade, 15) || "SUMARE") +
+            f("62", f("05", (String(txid || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 25)) || "***")) + "6304";
+    let crc = 0xFFFF;
+    for (const ch of p){ crc ^= ch.charCodeAt(0) << 8; for (let i = 0; i < 8; i++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF; }
+    return p + crc.toString(16).toUpperCase().padStart(4, "0");
+  }
+
   /* botão flutuante de dúvidas no WhatsApp da Danni's Tur (todas as telas da família) */
   function zapDuvidas(){
     if (document.getElementById("zapDuvidas")) return;

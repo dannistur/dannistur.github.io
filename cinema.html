@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cinema com a Danni's Tur · 28/11</title>
+<meta name="description" content="Passeio da van pro Cine Sumaré no dia 28 de novembro. A van leva e busca. R$ 40 com lanche e bebida.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="🎬 Cinema com a Danni's Tur · 28 de novembro">
+<meta property="og:description" content="A van leva e busca! R$ 40 com lanche e bebida. Inscreva seu filho pelo app.">
+<meta property="og:image" content="https://murilodannis123-lang.github.io/dannis-tur/og-cinema.jpg?v=1">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://murilodannis123-lang.github.io/dannis-tur/cinema.html">
+<meta property="og:site_name" content="Danni's Tur">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#712473">
+<link rel="icon" href="icones/favicon-64.png">
+<link rel="apple-touch-icon" href="icones/apple-180.png">
+<link rel="manifest" href="manifest.json?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="estilo.css?v=31">
+<style>
+body{margin:0}
+.cine{padding:8px 0 110px}
+.cine .wrap{display:grid;gap:18px}
+/* ingresso */
+.ingresso{position:relative;background:radial-gradient(120% 90% at 50% 0%,#8e2f91 0%,var(--roxo) 55%,#3f1142 100%);color:#fff;border-radius:22px;padding:26px 20px 22px;overflow:hidden;display:grid;gap:14px;box-shadow:0 10px 30px rgba(79,23,82,.3)}
+.ingresso::before,.ingresso::after{content:"";position:absolute;top:50%;width:26px;height:26px;border-radius:50%;background:var(--papel);transform:translateY(-50%)}
+.ingresso::before{left:-13px}.ingresso::after{right:-13px}
+.ingresso .luzes{position:absolute;inset:0 0 auto 0;height:12px;background:radial-gradient(circle,#ffd86b 0 3px,transparent 4px) 0 4px/22px 12px repeat-x;opacity:.9;animation:pisca-luz 1.2s steps(2) infinite}
+@keyframes pisca-luz{50%{opacity:.35}}
+.ingresso small{font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--amarelo);font-size:12px;margin-top:4px}
+.ingresso h1{font-size:clamp(30px,7.6vw,44px);font-weight:900;font-style:italic;line-height:1;color:#fff}
+.ingresso h1 em{color:var(--amarelo);font-style:inherit}
+.dados-ev{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dados-ev div{background:rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;display:grid;gap:2px}
+.dados-ev b{font-family:var(--f-display);font-size:18px;font-weight:800;line-height:1.1}
+.dados-ev span{font-size:13px;opacity:.85}
+.dados-ev .preco{grid-column:1/-1;background:var(--amarelo);color:#3f1142;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.dados-ev .preco b{font-size:30px;font-style:italic}
+.picote{border-top:2px dashed rgba(255,255,255,.35);margin:2px -20px 0}
+.ingresso .sim{display:flex;gap:10px;align-items:center;font-weight:700}
+.ingresso .sim i{font-style:normal;font-size:26px}
+/* perguntas */
+.faq{display:grid;gap:8px}
+.faq details{background:var(--cartao);border:1px solid var(--linha);border-radius:14px;padding:12px 14px}
+.faq summary{font-weight:700;cursor:pointer}
+.faq p{margin:8px 0 0;color:var(--tinta-2)}
+/* crianças */
+.crianca{border:1.5px solid var(--linha);border-radius:16px;padding:14px;display:grid;gap:12px}
+.crianca-top{display:flex;justify-content:space-between;align-items:center}
+.crianca-top h3{font-size:19px}
+.tios{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tio{position:relative}
+.tio input{position:absolute;opacity:0;pointer-events:none}
+.tio span{display:flex;align-items:center;gap:10px;border:2px solid var(--linha);border-radius:14px;padding:8px;font-weight:700;cursor:pointer;background:#fff}
+.tio img{width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none;background:#eee}
+.tio input:checked + span{border-color:var(--roxo);background:#f6ecf7;box-shadow:0 0 0 2px var(--roxo) inset}
+.tio input:focus-visible + span{outline:3px solid var(--laranja);outline-offset:2px}
+.total-cine{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-weight:700;border-top:1.5px dashed var(--linha);padding-top:12px}
+.total-cine b{font-family:var(--f-display);font-size:26px;font-style:italic;color:var(--roxo)}
+/* pagamento */
+.pagar{display:grid;gap:14px;text-align:center;justify-items:center}
+.pagar h2{font-size:26px}
+.pagar .lista-ok{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-weight:600}
+.qr{background:#fff;border:1px solid var(--linha);border-radius:16px;padding:10px;width:min(260px,72vw)}
+.qr svg{display:block;width:100%;height:auto}
+.valor-pagar{font-family:var(--f-display);font-size:34px;font-weight:900;font-style:italic;color:var(--roxo);line-height:1}
+.pagar .btns-pix{display:grid;gap:8px;width:100%;max-width:420px}
+.chave-txt{font-size:13px;color:var(--tinta-2);word-break:break-all}
+.prazo{background:#fff4c2;border:2px solid #f0b400;border-radius:12px;padding:10px 12px;font-weight:600;max-width:420px}
+.copiado{color:var(--ok);font-weight:700;min-height:1.2em;margin:0}
+</style>
+</head>
+<body>
+
+<nav class="barra" aria-label="Navegação">
+  <a class="voltar" href="./"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Início</a>
+  <a href="./" class="barra-logo"><img src="logo.png" alt="Danni's Tur" width="750" height="160"></a>
+</nav>
+
+<main class="cine">
+  <div class="wrap">
+
+    <section class="ingresso" aria-label="Convite">
+      <div class="luzes" aria-hidden="true"></div>
+      <small>Passeio da turma da van</small>
+      <h1>Cinema com a <em>Danni's Tur!</em> 🍿</h1>
+      <div class="dados-ev">
+        <div><b>28 de novembro</b><span>sábado</span></div>
+        <div><b>Cine Sumaré</b><span id="horario">horário: avisamos no grupo</span></div>
+        <div class="preco"><b>R$ 40</b><span>por criança, com lanche e bebida</span></div>
+      </div>
+      <div class="picote" aria-hidden="true"></div>
+      <div class="sim"><i aria-hidden="true">🚐</i><span>A van leva e busca!</span></div>
+    </section>
+
+    <div class="faq">
+      <details><summary>A van vai levar?</summary><p>Sim! A van da Danni's Tur leva e busca. A gente monta a rota de cada van com os inscritos.</p></details>
+      <details><summary>O que está incluso nos R$ 40?</summary><p>O cinema, o lanche e a bebida, além do transporte de ida e volta.</p></details>
+      <details><summary>Até quando pagar?</summary><p>Até <b>20 de novembro</b>, pelo Pix desta página. Depois de pagar, mande o comprovante no nosso WhatsApp pra garantir a vaga.</p></details>
+    </div>
+
+    <!-- inscrição -->
+    <form class="card" id="fCine" novalidate style="gap:18px">
+      <h2 style="font-size:24px">Inscrever no passeio</h2>
+      <fieldset>
+        <legend>Responsável</legend>
+        <div class="grade">
+          <div class="campo inteiro"><label for="cResp">Seu nome</label><input type="text" id="cResp" autocomplete="name" required></div>
+          <div class="campo inteiro"><label for="cCel">Celular / WhatsApp</label><input type="tel" id="cCel" inputmode="tel" autocomplete="tel" placeholder="(19) 90000-0000" required></div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Criança(s)</legend>
+        <div id="criancas" style="display:grid;gap:12px"></div>
+        <button class="btn btn-sec" type="button" id="addCrianca" style="margin-top:12px">+ Adicionar irmão(ã)</button>
+      </fieldset>
+      <div class="total-cine"><span id="totalTxt">1 criança</span><b id="totalV">R$ 40,00</b></div>
+      <p class="msg-err" id="cErr" role="alert"></p>
+      <button class="btn btn-pri" type="submit" id="cEnviar">Confirmar inscrição</button>
+    </form>
+
+    <!-- pagamento (depois de inscrever) -->
+    <section class="card pagar" id="pagar" hidden>
+      <h2>Inscrição feita! 🎉</h2>
+      <ul class="lista-ok" id="listaOk"></ul>
+      <p style="margin:0">Agora é só pagar o Pix:</p>
+      <div class="valor-pagar" id="valorPagar"></div>
+      <div class="qr" id="qr" hidden></div>
+      <div class="btns-pix">
+        <button class="btn btn-pri" type="button" id="copiaCola" hidden>Copiar código Pix (copia e cola)</button>
+        <button class="btn btn-sec" type="button" id="copiaChave" hidden>Copiar chave Pix</button>
+        <p class="chave-txt" id="chaveTxt"></p>
+        <p class="copiado" id="copiado" role="status"></p>
+        <a class="btn btn-zap" id="mandaComp" href="#" target="_blank" rel="noopener">📎 Já paguei: mandar o comprovante no WhatsApp</a>
+      </div>
+      <p class="prazo">⏰ Pague até <b>20 de novembro</b> e não esqueça de mandar o comprovante no WhatsApp. É ele que garante a vaga.</p>
+      <button class="btn btn-link" type="button" id="outra">Fazer outra inscrição</button>
+    </section>
+
+  </div>
+</main>
+
+<script src="comum.js?v=14"></script>
+<script src="qrcode.js?v=1"></script>
+<script>
+(function(){
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const {ESCOLAS, esc, brl, api, zapLink, maskTel, ZAP_DANNIS, PIX, pixCopiaCola} = DT;
+  const VALOR = 40;
+  const TIOS = [{nome:"Tio Daniel", foto:"img/tio-daniel.jpg"}, {nome:"Tia Joyce", foto:"img/tia-joyce.jpg"}, {nome:"Tio Luiz", foto:"img/tio-luiz.jpg"}, {nome:"Tia Cintia", foto:"img/tia-cintia.jpg"}];
+  const guarda = {get(){ try { return JSON.parse(localStorage.getItem("dt-cinema") || "null"); } catch(e){ return null; } },
+                  set(v){ try { localStorage.setItem("dt-cinema", JSON.stringify(v)); } catch(e){} },
+                  apaga(){ try { localStorage.removeItem("dt-cinema"); } catch(e){} }};
+
+  /* ---------- crianças ---------- */
+  let n = 0;
+  const opcoes = `<option value="">Escolha a escola</option>` + ESCOLAS.map(e => `<option>${esc(e.nome)}</option>`).join("") + `<option value="outra">Outra escola</option>`;
+  function addCrianca(){
+    n++; const id = "k" + n, d = document.createElement("div"); d.className = "crianca";
+    d.innerHTML = `
+      <div class="crianca-top"><h3>Criança</h3><button type="button" class="btn btn-link k-rem" hidden>Remover</button></div>
+      <div class="campo"><label for="${id}n">Nome completo da criança</label><input type="text" id="${id}n" class="k-nome" autocomplete="off" placeholder="Ex.: João da Silva"></div>
+      <div class="campo"><label for="${id}e">Escola</label><select id="${id}e" class="k-escola">${opcoes}</select></div>
+      <div class="campo k-outra-wrap" hidden><label for="${id}o">Nome da escola</label><input type="text" id="${id}o" class="k-outra"></div>
+      <div class="campo"><span style="font-weight:600;font-size:14px" id="${id}pl">Período</span>
+        <div class="chips k-per" role="radiogroup" aria-labelledby="${id}pl">${["Manhã","Tarde","Integral","Noite"].map(p => `<label class="chip"><input type="radio" name="${id}p" value="${p}"><span>${p}</span></label>`).join("")}</div></div>
+      <div class="campo"><span style="font-weight:600;font-size:14px" id="${id}tl">Van (tio ou tia)</span>
+        <div class="tios k-tio" role="radiogroup" aria-labelledby="${id}tl">${TIOS.map(t => `<label class="tio"><input type="radio" name="${id}t" value="${t.nome}"><span><img src="${t.foto}" alt="" loading="lazy">${t.nome}</span></label>`).join("")}</div></div>`;
+    const sel = d.querySelector(".k-escola");
+    sel.onchange = () => { d.querySelector(".k-outra-wrap").hidden = sel.value !== "outra"; };
+    d.querySelector(".k-rem").onclick = () => { d.remove(); renumera(); };
+    $("#criancas").appendChild(d); renumera(); return d;
+  }
+  function renumera(){
+    const cs = [...document.querySelectorAll("#criancas .crianca")];
+    cs.forEach((c, i) => { c.querySelector("h3").textContent = cs.length > 1 ? `Criança ${i + 1}` : "Criança"; c.querySelector(".k-rem").hidden = cs.length < 2; });
+    $("#totalTxt").textContent = cs.length > 1 ? `${cs.length} crianças × R$ 40` : "1 criança";
+    $("#totalV").textContent = `R$ ${brl(VALOR * cs.length)}`;
+  }
+  addCrianca();
+  $("#addCrianca").onclick = () => addCrianca().querySelector(".k-nome").focus();
+  $("#cCel").addEventListener("input", e => { if (/^[\d()\s-]*$/.test(e.target.value)) e.target.value = maskTel(e.target.value); });
+
+  /* ---------- enviar ---------- */
+  const marca = (el, ok) => { el.closest(".campo")?.classList.toggle("err", !ok); return ok; };
+  $("#fCine").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    let ok = true, primeiro = null;
+    const req = (el, c) => { if (!marca(el, c)){ ok = false; primeiro = primeiro || el; } };
+    req($("#cResp"), $("#cResp").value.trim().length >= 3);
+    req($("#cCel"), $("#cCel").value.replace(/\D/g, "").length >= 10);
+    const criancas = [...document.querySelectorAll("#criancas .crianca")].map(c => {
+      const nome = c.querySelector(".k-nome"), es = c.querySelector(".k-escola"), outra = c.querySelector(".k-outra");
+      const per = c.querySelector('.k-per input:checked'), tio = c.querySelector('.k-tio input:checked');
+      req(nome, nome.value.trim().split(/\s+/).length >= 2);
+      req(es, !!es.value); if (es.value === "outra") req(outra, !!outra.value.trim());
+      [[c.querySelector(".k-per"), per], [c.querySelector(".k-tio"), tio]].forEach(([g, v]) => { g.style.outline = v ? "none" : "2px solid var(--erro)"; g.style.outlineOffset = "4px"; g.style.borderRadius = "14px"; if (!v){ ok = false; primeiro = primeiro || g; } });
+      return {nome: nome.value.trim(), escola: es.value === "outra" ? outra.value.trim() : es.value, periodo: per ? per.value : "", tio: tio ? tio.value : ""};
+    });
+    if (!ok){ $("#cErr").textContent = "Preencha os campos destacados (nome completo, escola, período e a van de cada criança)."; primeiro?.scrollIntoView({behavior:"smooth", block:"center"}); return; }
+    $("#cErr").textContent = "";
+    const b = $("#cEnviar"); b.disabled = true; b.textContent = "Enviando…";
+    try {
+      const dados = {responsavel: $("#cResp").value.trim(), celular: $("#cCel").value, criancas};
+      const r = await api("cinema_inscrever", {dados});
+      const insc = {grupo: r.grupo, total: r.total, responsavel: dados.responsavel, criancas};
+      guarda.set(insc); mostraPagar(insc);
+    } catch(e){ $("#cErr").textContent = e.message || "Não consegui enviar agora. Confira a internet e tente de novo."; }
+    b.disabled = false; b.textContent = "Confirmar inscrição";
+  });
+  document.addEventListener("input", e => { if (e.target.closest("#fCine")) marca(e.target, true); });
+  document.addEventListener("change", e => { const g = e.target.closest(".k-per, .k-tio"); if (g) g.style.outline = "none"; });
+
+  /* ---------- pagar ---------- */
+  function mostraPagar(insc){
+    $("#fCine").hidden = true; $("#pagar").hidden = false;
+    $("#listaOk").innerHTML = insc.criancas.map(c => `<li>🎟️ ${esc(c.nome)} · ${esc(c.escola)} ${esc(c.periodo)} · ${esc(c.tio)}</li>`).join("");
+    $("#valorPagar").textContent = `R$ ${brl(insc.total)}`;
+    const temPix = !!String(PIX.chave || "").trim();
+    $("#qr").hidden = $("#copiaCola").hidden = $("#copiaChave").hidden = !temPix;
+    if (temPix){
+      const codigo = pixCopiaCola({chave: PIX.chave, nome: PIX.nome, cidade: PIX.cidade, valor: insc.total, txid: "CINEMA" + insc.grupo});
+      const q = qrcode(0, "M"); q.addData(codigo); q.make();
+      $("#qr").innerHTML = q.createSvgTag({cellSize: 6, margin: 2, scalable: true});
+      $("#copiaCola").onclick = () => copia(codigo, "Código Pix copiado! Abra o app do banco e escolha Pix copia e cola.");
+      $("#copiaChave").onclick = () => copia(PIX.chave, "Chave Pix copiada!");
+      $("#chaveTxt").textContent = `Chave Pix: ${PIX.chave}${PIX.nome ? " · " + PIX.nome : ""}`;
+    } else $("#chaveTxt").textContent = "A chave Pix vai aparecer aqui em breve. Se preferir, chame a gente no WhatsApp.";
+    const msg = `Olá! Segue o comprovante do Pix do *cinema do dia 28/11* 🎬 (inscrição ${insc.grupo}):\n${insc.criancas.map(c => `• ${c.nome} – ${c.escola} ${c.periodo} – ${c.tio}`).join("\n")}\nTotal: R$ ${brl(insc.total)}\n\n(anexe o comprovante aqui 📎)`;
+    $("#mandaComp").href = zapLink(ZAP_DANNIS, msg);
+    $("#pagar").scrollIntoView({behavior:"smooth", block:"start"});
+  }
+  async function copia(txt, aviso){
+    try { await navigator.clipboard.writeText(txt); }
+    catch(e){ const t = document.createElement("textarea"); t.value = txt; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); } catch(_){} t.remove(); }
+    $("#copiado").textContent = aviso; setTimeout(() => { $("#copiado").textContent = ""; }, 5000);
+  }
+  $("#outra").onclick = () => {
+    guarda.apaga(); $("#pagar").hidden = true; $("#fCine").hidden = false;
+    $("#criancas").innerHTML = ""; n = 0; addCrianca(); $("#fCine").scrollIntoView({behavior:"smooth", block:"start"});
+  };
+  const salva = guarda.get(); if (salva && salva.grupo) mostraPagar(salva);   // voltou na página: mostra o Pix de novo
+})();
+</script>
+</body>
+</html>

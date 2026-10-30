@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=30">
+<link rel="stylesheet" href="estilo.css?v=31">
 <style>
 body{margin:0}
 .pg{max-width:1080px;margin:0 auto;padding-block:18px 48px;display:grid;gap:16px}
@@ -75,6 +75,20 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 .grade2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .btns{display:grid;gap:8px}
 .ok-msg{color:var(--ok);font-weight:700;font-size:14px;margin:0}
+.cine-adm summary{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;list-style:none;flex-wrap:wrap}
+.cine-adm summary::-webkit-details-marker{display:none}
+.cine-adm summary span{font-weight:700;color:var(--tinta-2);font-size:14px}
+.cine-bts{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.cine-van{display:grid;gap:6px}
+.cine-van h4{margin:6px 0 0;font-family:var(--f-display);font-size:18px;color:var(--roxo)}
+.cine-van h4 small{font-family:var(--f-corpo);font-size:13px;color:var(--tinta-2);font-weight:600}
+.cine-item{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;border:1px solid var(--linha);border-radius:12px;padding:8px 10px;font-size:14px}
+.cine-item.pago{background:#eaf7ef;border-color:#9fd6b4}
+.cine-item small{color:var(--tinta-2)}
+.cine-item .acoes-c{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.bt-pago{border:2px solid var(--ok);background:#fff;color:var(--ok);border-radius:999px;padding:4px 12px;font:inherit;font-weight:700;cursor:pointer}
+.cine-item.pago .bt-pago{background:var(--ok);color:#fff}
+.bt-x{border:0;background:none;color:var(--erro);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline}
 .tag-novo{font-style:normal;font-size:12px;font-weight:800;letter-spacing:.04em;background:#1677c9;color:#fff;border-radius:999px;padding:2px 9px;vertical-align:middle;white-space:nowrap}
 </style>
 </head>
@@ -98,6 +112,16 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   <section id="painel" hidden style="display:grid;gap:16px">
     <div class="placar" id="placar"></div>
     <div class="aniv" id="aniv" hidden></div>
+    <details class="card cine-adm" id="cinema">
+      <summary><h3>🎬 Cinema 28/11</h3><span id="cineResumo">carregando…</span></summary>
+      <div class="cine-bts">
+        <label class="check"><input type="checkbox" id="cineSoPagos"> Só quem pagou</label>
+        <button class="btn btn-sec" type="button" id="cineCopiar">Copiar lista por van</button>
+        <a class="btn btn-link" href="cinema.html" target="_blank" rel="noopener">Abrir a página do passeio</a>
+      </div>
+      <p class="ok-msg" id="cineMsg" role="status"></p>
+      <div id="cineLista"></div>
+    </details>
     <div class="card minha-ass" id="minhaAss">
       <h3>✍️ Minha assinatura (Danni's Tur)</h3>
       <div id="assSalva" hidden>
@@ -184,7 +208,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
 <div id="printArea"></div>
 
-<script src="comum.js?v=13"></script>
+<script src="comum.js?v=14"></script>
 <script src="cartao.js?v=1"></script>
 <script>
 (function(){
@@ -207,9 +231,54 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
   async function carregar(){
     $("#painelMsg").textContent = "Carregando…";
-    try{ const r = await api("admin_lista", {senha}); familias = r.familias.reverse(); minhaAssinatura = r.assinaturaDannis || ""; mostraMinhaAss(); $("#painelMsg").textContent = ""; desenha(); abrePeloLink(); }
+    try{ const r = await api("admin_lista", {senha}); familias = r.familias.reverse(); minhaAssinatura = r.assinaturaDannis || ""; mostraMinhaAss(); $("#painelMsg").textContent = ""; desenha(); abrePeloLink(); carregaCinema(); }
     catch(e){ if (e.codigo==="senha"){ sair(); } else $("#painelMsg").textContent = "Não consegui carregar. Toque em Atualizar."; }
   }
+  /* ---------- cinema 28/11: inscritos por van, marcar pago ---------- */
+  let cine = [], cineTios = ["Tio Daniel","Tia Joyce","Tio Luiz","Tia Cintia"];
+  async function carregaCinema(){
+    try { const r = await api("admin_cinema", {senha}); cine = r.lista || []; cineTios = r.tios || cineTios; desenhaCinema(); }
+    catch(e){ $("#cineResumo").textContent = "não consegui carregar"; }
+  }
+  function desenhaCinema(){
+    const pagos = cine.filter(c => c.pago), so = $("#cineSoPagos").checked;
+    $("#cineResumo").textContent = cine.length ? `${cine.length} criança${cine.length > 1 ? "s" : ""} · ${pagos.length} pago${pagos.length !== 1 ? "s" : ""} · R$ ${brl(pagos.reduce((t, c) => t + Number(c.valor || 0), 0)) || "0,00"} recebido` : "ninguém inscrito ainda";
+    const vans = [...cineTios, ...new Set(cine.map(c => c.tio).filter(t => !cineTios.includes(t)))];
+    $("#cineLista").innerHTML = vans.map(t => {
+      const doTio = cine.filter(c => c.tio === t && (!so || c.pago));
+      const todos = cine.filter(c => c.tio === t);
+      if (!todos.length) return "";
+      return `<div class="cine-van"><h4>${esc(t)} <small>${todos.length} criança${todos.length > 1 ? "s" : ""} · ${todos.filter(c => c.pago).length} pago${todos.filter(c => c.pago).length !== 1 ? "s" : ""}</small></h4>
+        ${doTio.map(c => `<div class="cine-item${c.pago ? " pago" : ""}">
+          <span><b>${esc(c.crianca)}</b> · ${esc(c.escola)} ${esc(c.periodo)}<br><small>${esc(c.responsavel)} · ${esc(c.celular)} · ${esc(c.grupo)}</small></span>
+          <span class="acoes-c"><button type="button" class="bt-pago" data-g="${esc(c.grupo)}" data-v="${c.pago ? "" : "1"}">${c.pago ? "✅ Pago" : "Marcar pago"}</button>
+          <button type="button" class="bt-x" data-id="${esc(c.id)}">tirar</button></span></div>`).join("") || `<small>Ninguém pago ainda nessa van.</small>`}</div>`;
+    }).join("") || `<div class="vazio">Quando alguém se inscrever no passeio, aparece aqui separado por van.</div>`;
+    $("#cineLista").querySelectorAll(".bt-pago").forEach(b => b.onclick = async () => {
+      const irmaos = cine.filter(c => c.grupo === b.dataset.g).length;
+      if (irmaos > 1 && !confirm(`Essa inscrição (${b.dataset.g}) tem ${irmaos} crianças no mesmo Pix. ${b.dataset.v ? "Marcar todas como pagas?" : "Desmarcar todas?"}`)) return;
+      b.disabled = true;
+      try { const r = await api("admin_cinema_pago", {senha, grupo: b.dataset.g, valor: !!b.dataset.v}); cine = r.lista; desenhaCinema(); }
+      catch(e){ $("#cineMsg").textContent = e.message; b.disabled = false; }
+    });
+    $("#cineLista").querySelectorAll(".bt-x").forEach(b => b.onclick = async () => {
+      const c = cine.find(x => String(x.id) === b.dataset.id);
+      if (!c || !confirm(`Tirar ${c.crianca} da lista do cinema?`)) return;
+      try { const r = await api("admin_cinema_cancelar", {senha, id: c.id, valor: true}); cine = r.lista; desenhaCinema(); }
+      catch(e){ $("#cineMsg").textContent = e.message; }
+    });
+  }
+  $("#cineSoPagos").onchange = desenhaCinema;
+  $("#cineCopiar").onclick = async () => {
+    const so = $("#cineSoPagos").checked, vans = [...cineTios, ...new Set(cine.map(c => c.tio).filter(t => !cineTios.includes(t)))];
+    const txt = `🎬 *CINEMA 28/11 – lista por van*${so ? " (só pagos)" : ""}\n` + vans.map(t => {
+      const l = cine.filter(c => c.tio === t && (!so || c.pago)); if (!l.length) return "";
+      return `\n🚐 *${t.toUpperCase()}* (${l.length})\n` + l.map((c, i) => `${i + 1}. ${c.crianca} – ${c.escola} ${c.periodo}${so ? "" : (c.pago ? " – ✅ pago" : " – ⏳ falta pagar")}`).join("\n");
+    }).join("\n");
+    try { await navigator.clipboard.writeText(txt.trim()); $("#cineMsg").textContent = "Lista copiada! Cole no WhatsApp."; }
+    catch(e){ $("#cineMsg").textContent = "Não consegui copiar."; }
+    setTimeout(() => { $("#cineMsg").textContent = ""; }, 4000);
+  };
   function sair(){ ss.set("dt-senha",""); lsl.set("dt-senha-lembrar",""); $("#painel").hidden = true; $("#detalhe").hidden = true; $("#fLogin").hidden = false; }
   $("#atualizar").onclick = carregar;
   $("#testeZap").onclick = async ()=>{
@@ -286,6 +355,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   const comoAbrir = "\n\nÉ só entrar com o seu CPF e a data de nascimento do seu filho(a).";
   /* link do aviso do WhatsApp (…/admin.html#f=12): abre direto na família, com o cursor no valor */
   function abrePeloLink(){
+    if (location.hash === "#cinema"){ history.replaceState(null, "", location.pathname); $("#cinema").open = true; setTimeout(()=>$("#cinema").scrollIntoView({behavior:"smooth", block:"start"}), 200); return; }
     if (location.hash === "#aniversarios"){ history.replaceState(null, "", location.pathname); setTimeout(()=>{ if (!$("#aniv").hidden) $("#aniv").scrollIntoView({behavior:"smooth", block:"start"}); }, 200); return; }
     const m = location.hash.match(/^#f=(\d+)$/); if (!m) return;
     history.replaceState(null, "", location.pathname);
