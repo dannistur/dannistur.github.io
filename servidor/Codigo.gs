@@ -15,7 +15,7 @@ const COLS = ["id","token","criado_em","status","responsavel","cpf","rg","celula
               "inicio_idx","mensalidade","parcelas","total","data_contrato","liberado_em","assinado_em","arquivo_url","observacao_interna","tipo","assinatura","assinatura_info","assinado_dannis_em","aceite_em","aceite_info","aceite_hash","aceite_valores","ajuste_info"];
 const STATUS = {AGUARDANDO:"aguardando_valor", LIBERADO:"liberado", ASSINADO:"assinado_online", IMPRESSO:"vai_entregar_impresso", RECEBIDO:"recebido", CANCELADO:"cancelado"};
 const FUSO = "America/Sao_Paulo";
-const SITE = "https://murilodannis123-lang.github.io/dannis-tur/";
+const SITE = "https://dannistur.github.io/";
 const PLANILHA_ID = "1luSn0_AEFnz38Q2SQsFvO0ZpnZv75azj107FUIKeBlQ";   // planilha "Danni's Tur – Renovações 2027"
 function planilha_(){ return SpreadsheetApp.openById(PLANILHA_ID); }
 
