@@ -59,6 +59,10 @@ body{margin:0}
 .picote{border-top:2px dashed rgba(255,255,255,.35);margin:2px -20px 0}
 .ingresso .sim{display:flex;gap:10px;align-items:center;font-weight:700;line-height:1.25}
 .ingresso .sim i{font-style:normal;font-size:26px}
+.ingresso .sim span{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.hora-van{font-style:normal;color:var(--amarelo);font-weight:800}
+.tradicional{margin:0;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:20px;line-height:1.15;color:var(--roxo)}
+.tradicional b{color:var(--laranja)}
 /* perguntas */
 .faq{display:grid;gap:8px}
 .faq-tit{font-size:22px;margin:4px 0 2px}
@@ -109,20 +113,19 @@ body{margin:0}
         <span class="faixa" aria-hidden="true">28/11 · Cine Sumaré</span>
         <svg class="estrela" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="ouro" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff2a8"/><stop offset=".5" stop-color="#ffc61a"/><stop offset="1" stop-color="#c98a00"/></linearGradient></defs><path d="M50 4l13.6 29.6 32.4 3.6-24.2 21.9 6.9 31.9L50 74.6 21.3 91l6.9-31.9L4 37.2l32.4-3.6z" fill="url(#ouro)" stroke="#7a4b00" stroke-width="4" stroke-linejoin="round"/></svg>
       </div>
-      <small>Nosso tradicional passeio da van chegou!!!</small>
-      <h1>E esse ano vai ser no <em>cinema!</em> 🍿</h1>
       <div class="dados-ev">
         <div><b>28 de novembro</b><span>sábado</span></div>
-        <div><b>Cine Sumaré</b><span id="horario">horário: avisamos no grupo</span></div>
+        <div><b>Cine Sumaré</b><span id="horario">sessão às 9h</span></div>
         <div class="preco"><b>R$ 40</b><span>por criança, com pipoca e bebida</span></div>
       </div>
       <div class="picote" aria-hidden="true"></div>
-      <div class="sim"><i aria-hidden="true">🚐</i><span>A van leva e busca!</span></div>
+      <div class="sim"><i aria-hidden="true">🚐</i><span>A van leva e busca! <em class="hora-van">Começamos a buscar às 7:45</em></span></div>
     </section>
 
     <div class="faq">
       <h2 class="faq-tit">Perguntas frequentes</h2>
       <details><summary>A van vai levar?</summary><p>Sim! A van da Danni's Tur leva e busca. A gente monta a rota de cada van com os inscritos.</p></details>
+      <details><summary>Que horas a van passa?</summary><p>Nesse dia as vans começam o trajeto às <b>7:45</b>. A sessão começa às <b>9h</b>, no Cine Sumaré.</p></details>
       <details><summary>Vai ter mais gente na sala?</summary><p>Não. Vamos fechar uma sala do Cine Sumaré só pras crianças da van da Danni's Tur.</p></details>
       <details><summary>O que está incluso nos R$ 40?</summary><p>A sessão de cinema na sala fechada, <b>pipoca + bebida</b> e a van levando e buscando.</p></details>
       <details><summary>Quem pode ir?</summary><p>As crianças que usam a van da Danni's Tur. Irmãos podem ir juntos, desde que também usem a van.</p></details>
@@ -153,6 +156,7 @@ body{margin:0}
     <!-- pagamento (depois de inscrever) -->
     <section class="card pagar" id="pagar" hidden>
       <h2>Inscrição feita! 🎉</h2>
+      <p class="tradicional">Nosso tradicional passeio da van chegou!!! E esse ano vai ser no <b>cinema!</b> 🍿</p>
       <ul class="lista-ok" id="listaOk"></ul>
       <p style="margin:0">Agora é só pagar o Pix:</p>
       <div class="valor-pagar" id="valorPagar"></div>
