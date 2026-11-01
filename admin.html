@@ -89,6 +89,40 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 .bt-pago{border:2px solid var(--ok);background:#fff;color:var(--ok);border-radius:999px;padding:4px 12px;font:inherit;font-weight:700;cursor:pointer}
 .cine-item.pago .bt-pago{background:var(--ok);color:#fff}
 .bt-x{border:0;background:none;color:var(--erro);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline}
+.vans-abre{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;text-align:left;cursor:pointer;font:inherit;color:inherit;border:1px solid var(--linha)}
+.vans-abre .vi{font-size:28px;width:48px;height:48px;display:grid;place-items:center;background:#f3e8f3;border-radius:12px}
+.vans-abre b{display:block;font-family:var(--f-display);font-size:19px}
+.vans-abre small{color:var(--tinta-2)}
+.vans-abre > span:last-child{font-size:28px;color:var(--roxo)}
+.v-abas{display:flex;flex-wrap:wrap;gap:6px}
+.v-abas button{border:2px solid var(--linha);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+.v-abas button[aria-selected="true"]{background:var(--roxo);border-color:var(--roxo);color:#fff}
+.v-abas button small{font-weight:600;opacity:.8}
+.v-lista{display:grid;gap:8px}
+.v-al{border:1px solid var(--linha);border-radius:12px;padding:10px;display:grid;gap:8px}
+.v-al .q{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.v-al small{color:var(--tinta-2)}
+.v-al .pend{font-size:12px;font-weight:700;color:#a5510b;background:#fff1e0;border-radius:999px;padding:1px 8px}
+.v-tios{display:flex;flex-wrap:wrap;gap:6px}
+.v-tios button{border:2px solid var(--linha);background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.v-tios button.sel{background:var(--roxo);color:#fff;border-color:var(--roxo)}
+.v-tios button:disabled{opacity:.5}
+.v-acoes{display:flex;flex-wrap:wrap;gap:8px}
+.v-custos-wrap{overflow-x:auto}
+.v-custos{border-collapse:collapse;font-size:14px;min-width:560px}
+.v-custos th,.v-custos td{padding:6px 8px;border-bottom:1px solid var(--linha);text-align:left}
+.v-custos input{width:110px;padding:6px 8px;border:1.5px solid var(--linha);border-radius:8px;font:inherit}
+.v-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.v-st{border:1px solid var(--linha);border-radius:14px;padding:12px;display:grid;gap:6px;font-size:14px}
+.v-st h4{margin:0;font-family:var(--f-display);font-size:18px;color:var(--roxo)}
+.v-st .lin{display:flex;justify-content:space-between;gap:8px}
+.v-st .lucro{font-family:var(--f-display);font-size:22px;font-weight:800}
+.v-st .pos{color:var(--ok)} .v-st .neg{color:var(--erro)}
+.v-st .v-barra{height:10px;border-radius:99px;background:#eee;overflow:hidden;display:flex}
+.v-st .v-barra i{display:block;height:100%}
+.v-st .veredito{font-weight:700;border-radius:10px;padding:6px 8px}
+.v-st .veredito.pos{background:#eaf7ef} .v-st .veredito.neg{background:#fde8e6}
+.v-st.total{border:2px solid var(--roxo);background:#fbf6fc}
 .tag-novo{font-style:normal;font-size:12px;font-weight:800;letter-spacing:.04em;background:#1677c9;color:#fff;border-radius:999px;padding:2px 9px;vertical-align:middle;white-space:nowrap}
 </style>
 </head>
@@ -112,6 +146,11 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   <section id="painel" hidden style="display:grid;gap:16px">
     <div class="placar" id="placar"></div>
     <div class="aniv" id="aniv" hidden></div>
+    <button type="button" class="card vans-abre" id="abreVans">
+      <span class="vi" aria-hidden="true">🚐</span>
+      <span><b>Vans e resultados</b><small id="vansResumo">Separe os alunos por motorista e veja se cada van está dando lucro</small></span>
+      <span aria-hidden="true">›</span>
+    </button>
     <details class="card cine-adm" id="cinema">
       <summary><h3>🎬 Cinema 28/11</h3><span id="cineResumo">carregando…</span></summary>
       <div class="cine-bts">
@@ -146,6 +185,33 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     </div>
     <p class="ok-msg" id="painelMsg" role="status"></p>
     <div class="lista" id="lista"></div>
+  </section>
+
+  <!-- vans: alunos por motorista + resultado de cada van -->
+  <section id="vans" hidden style="display:grid;gap:14px">
+    <button class="btn btn-link" type="button" id="vansVoltar" style="justify-self:start">← Voltar pra lista</button>
+    <div class="card" style="gap:10px">
+      <h2 style="font-size:24px">🚐 Vans</h2>
+      <p class="dica" style="margin:0">Aparecem os alunos dos contratos já fechados (aceitos ou assinados). Toque no tio ou na tia pra colocar o aluno na van.</p>
+      <div class="v-abas" id="vAbas" role="tablist"></div>
+      <label class="check" style="font-size:14px"><input type="checkbox" id="vTodos"> Mostrar também quem ainda não fechou o contrato</label>
+      <div id="vLista" class="v-lista"></div>
+      <div class="v-acoes" id="vAcoes" hidden>
+        <a class="btn btn-zap" id="vZap" href="#" target="_blank" rel="noopener">Mandar a lista no WhatsApp</a>
+        <button class="btn btn-sec" type="button" id="vCopiar">Copiar lista</button>
+        <button class="btn btn-sec" type="button" id="vImprimir">Imprimir lista</button>
+      </div>
+      <p class="ok-msg" id="vMsg" role="status"></p>
+    </div>
+
+    <div class="card" style="gap:12px">
+      <h2 style="font-size:24px">📊 Resultado de cada van (por mês)</h2>
+      <p class="dica" style="margin:0">A receita é a mensalidade dos alunos de cada van (irmãos dividem a mensalidade da família). Coloque os custos de cada van por mês; pneus e gastos do ano, divida por 12.</p>
+      <div class="v-custos-wrap"><table class="v-custos" id="vCustos"></table></div>
+      <div class="btns" style="grid-template-columns:auto;justify-content:start"><button class="btn btn-pri" type="button" id="vSalvaCustos">Salvar custos</button></div>
+      <p class="ok-msg" id="vCustosMsg" role="status"></p>
+      <div id="vStats" class="v-stats"></div>
+    </div>
   </section>
 
   <!-- detalhe de uma família -->
@@ -231,9 +297,120 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
   async function carregar(){
     $("#painelMsg").textContent = "Carregando…";
-    try{ const r = await api("admin_lista", {senha}); familias = r.familias.reverse(); minhaAssinatura = r.assinaturaDannis || ""; mostraMinhaAss(); $("#painelMsg").textContent = ""; desenha(); abrePeloLink(); carregaCinema(); }
+    try{ const r = await api("admin_lista", {senha}); familias = r.familias.reverse(); minhaAssinatura = r.assinaturaDannis || ""; custosVans = r.custosVans || {}; mostraMinhaAss(); $("#painelMsg").textContent = ""; desenha(); resumoVans(); if (!$("#vans").hidden){ desenhaCustos(); desenhaVans(); } abrePeloLink(); carregaCinema(); }
     catch(e){ if (e.codigo==="senha"){ sair(); } else $("#painelMsg").textContent = "Não consegui carregar. Toque em Atualizar."; }
   }
+  /* ---------- vans: alunos por motorista + resultado de cada van ---------- */
+  const TIOS_V = [{nome:"Tio Daniel", fone:"19997781210"}, {nome:"Tia Joyce", fone:"19988761202"}, {nome:"Tio Luiz", fone:"19997499380"}, {nome:"Tia Cintia", fone:"19981163312"}];
+  const CUSTOS = [["motorista","Motorista",2500],["monitora","Monitora",850],["combustivel","Combustível",0],["pneus","Pneus e manutenção",0],["gerais","Despesas gerais",0]];
+  let custosVans = {}, abaVan = "sem";
+  const fechado = f => !!f.aceiteEm || ["assinado_online","recebido","vai_entregar_impresso"].includes(f.status);
+  function alunosVans(){
+    const so = !$("#vTodos").checked, lista = [];
+    familias.forEach(f => {
+      if (f.status === "cancelado" || (so && !fechado(f))) return;
+      const parte = num((f.valores || {}).mensalidade) / Math.max(1, f.alunos.length);
+      f.alunos.forEach((a, i) => lista.push({f, a, i, tio: (f.vans || [])[i] || "", parte}));
+    });
+    return lista.sort((x, y) => (x.a.escola || "").localeCompare(y.a.escola || "", "pt-BR") || (x.a.periodo || "").localeCompare(y.a.periodo || "") || x.a.nome.localeCompare(y.a.nome, "pt-BR"));
+  }
+  function resumoVans(){
+    const l = alunosVans(), sem = l.filter(x => !x.tio).length;
+    $("#vansResumo").textContent = l.length ? `${l.length} aluno${l.length > 1 ? "s" : ""} com contrato fechado${sem ? ` · ${sem} sem van` : " · todos com van"}` : "Separe os alunos por motorista e veja se cada van está dando lucro";
+  }
+  function desenhaVans(){
+    const l = alunosVans();
+    const abas = [["sem","Sem van", l.filter(x => !x.tio).length], ...TIOS_V.map(t => [t.nome, t.nome, l.filter(x => x.tio === t.nome).length]), ["todos","Todos", l.length]];
+    $("#vAbas").innerHTML = abas.map(([k, n, c]) => `<button type="button" role="tab" aria-selected="${abaVan === k}" data-k="${esc(k)}">${esc(n)} <small>${c}</small></button>`).join("");
+    $("#vAbas").querySelectorAll("button").forEach(b => b.onclick = () => { abaVan = b.dataset.k; desenhaVans(); });
+    const mostra = l.filter(x => abaVan === "todos" ? true : abaVan === "sem" ? !x.tio : x.tio === abaVan);
+    $("#vLista").innerHTML = mostra.map(x => `<div class="v-al">
+        <div class="q"><span><b>${esc(x.a.nome)}</b>${x.a.nasc ? ` <small>(${idade(x.a.nasc)} anos)</small>` : ""}<br><small>${esc(x.a.escola)} · ${esc(x.a.periodo)} · ${esc(x.a.trajeto || "")}</small></span>
+        <span style="text-align:right"><small>${esc(x.f.responsavel)}<br>${esc(x.f.celular)}</small>${fechado(x.f) ? "" : '<br><span class="pend">contrato não fechado</span>'}</span></div>
+        <small>📍 ${esc(x.f.rua)} – ${esc(x.f.bairro)}</small>
+        <div class="v-tios">${TIOS_V.map(t => `<button type="button" class="${x.tio === t.nome ? "sel" : ""}" data-id="${x.f.id}" data-i="${x.i}" data-t="${esc(t.nome)}">${esc(t.nome)}</button>`).join("")}${x.tio ? `<button type="button" data-id="${x.f.id}" data-i="${x.i}" data-t="">tirar</button>` : ""}</div></div>`).join("")
+      || `<div class="vazio">${abaVan === "sem" ? "Todos os alunos já estão numa van. 👏" : "Nenhum aluno aqui ainda."}</div>`;
+    $("#vLista").querySelectorAll(".v-tios button").forEach(b => b.onclick = () => poeNaVan(b));
+    const tioSel = TIOS_V.find(t => t.nome === abaVan);
+    $("#vAcoes").hidden = !tioSel || !mostra.length;
+    if (tioSel) $("#vZap").href = zapLink(tioSel.fone, textoLista(tioSel.nome, mostra));
+    desenhaResultado(l); resumoVans();
+  }
+  async function poeNaVan(b){
+    const f = familias.find(x => String(x.id) === b.dataset.id); if (!f) return;
+    const box = b.parentElement; box.querySelectorAll("button").forEach(x => x.disabled = true);
+    try {
+      const r = await api("admin_van", {senha, id: f.id, idx: +b.dataset.i, tio: b.dataset.t});
+      f.vans = r.vans; $("#vMsg").textContent = ""; desenhaVans();
+    } catch(e){ $("#vMsg").textContent = e.message; box.querySelectorAll("button").forEach(x => x.disabled = false); }
+  }
+  function textoLista(tio, l){
+    return `🚐 *${tio.toUpperCase()} – alunos 2027* (${l.length})\n` + l.map((x, k) =>
+      `\n${k + 1}. *${x.a.nome}* – ${x.a.escola} · ${x.a.periodo}${x.a.trajeto && x.a.trajeto !== "Ida e volta" ? " · " + x.a.trajeto : ""}\n   📍 ${x.f.rua} – ${x.f.bairro}\n   📞 ${x.f.responsavel.split(" ")[0]}: ${x.f.celular}${x.f.foneCasa ? " · casa " + x.f.foneCasa : ""}`).join("\n");
+  }
+  $("#vCopiar").onclick = async () => {
+    const t = TIOS_V.find(t => t.nome === abaVan); if (!t) return;
+    const l = alunosVans().filter(x => x.tio === t.nome);
+    try { await navigator.clipboard.writeText(textoLista(t.nome, l)); $("#vMsg").textContent = "Lista copiada!"; } catch(e){ $("#vMsg").textContent = "Não consegui copiar."; }
+    setTimeout(() => { $("#vMsg").textContent = ""; }, 3000);
+  };
+  $("#vImprimir").onclick = () => {
+    const t = TIOS_V.find(t => t.nome === abaVan); if (!t) return;
+    const l = alunosVans().filter(x => x.tio === t.nome);
+    preparaImpressao(`<div style="font:14px Arial;padding:10px"><h2 style="margin:0 0 4px">🚐 ${esc(t.nome)} – alunos 2027</h2><p style="margin:0 0 10px">${l.length} aluno(s) · impresso em ${fmtData(hojeISO())}</p>
+      <table style="width:100%;border-collapse:collapse" border="1" cellpadding="5"><tr><th>#</th><th>Aluno</th><th>Escola · período</th><th>Endereço</th><th>Responsável · telefone</th></tr>
+      ${l.map((x, k) => `<tr><td>${k + 1}</td><td>${esc(x.a.nome)}</td><td>${esc(x.a.escola)} · ${esc(x.a.periodo)}${x.a.trajeto && x.a.trajeto !== "Ida e volta" ? " · " + esc(x.a.trajeto) : ""}</td><td>${esc(x.f.rua)} – ${esc(x.f.bairro)}</td><td>${esc(x.f.responsavel)}<br>${esc(x.f.celular)}</td></tr>`).join("")}</table></div>`);
+    window.print();
+  };
+  $("#vTodos").onchange = desenhaVans;
+
+  /* custos e resultado */
+  function custoDe(t){ const c = custosVans[t] || {}; return Object.fromEntries(CUSTOS.map(([k, , pad]) => [k, c[k] != null ? +c[k] : pad])); }
+  function desenhaCustos(){
+    $("#vCustos").innerHTML = `<tr><th>Por mês (R$)</th>${TIOS_V.map(t => `<th>${esc(t.nome)}</th>`).join("")}</tr>` +
+      CUSTOS.map(([k, rot]) => `<tr><td>${rot}</td>${TIOS_V.map(t => `<td><input type="text" inputmode="decimal" data-t="${esc(t.nome)}" data-k="${k}" value="${brl(custoDe(t.nome)[k]) || "0,00"}"></td>`).join("")}</tr>`).join("");
+    $("#vCustos").querySelectorAll("input").forEach(i => i.oninput = () => { const t = i.dataset.t; custosVans[t] = custoDe(t); custosVans[t][i.dataset.k] = num(i.value); desenhaResultado(alunosVans()); });
+  }
+  $("#vSalvaCustos").onclick = async () => {
+    $("#vCustosMsg").textContent = "Salvando…";
+    try { const r = await api("admin_custos", {senha, custos: Object.fromEntries(TIOS_V.map(t => [t.nome, custoDe(t.nome)]))}); custosVans = r.custosVans; $("#vCustosMsg").textContent = "Custos salvos."; }
+    catch(e){ $("#vCustosMsg").textContent = e.message; }
+    setTimeout(() => { $("#vCustosMsg").textContent = ""; }, 3000);
+  };
+  function desenhaResultado(l){
+    const R = v => `R$ ${brl(Math.abs(v)) || "0,00"}`, sinal = v => v < 0 ? "−" : "";
+    const linhas = TIOS_V.map(t => {
+      const al = l.filter(x => x.tio === t.nome), receita = al.reduce((s, x) => s + x.parte, 0);
+      const c = custoDe(t.nome), custo = Object.values(c).reduce((s, v) => s + v, 0), lucro = receita - custo;
+      const media = al.length ? receita / al.length : 0;
+      return {t: t.nome, n: al.length, receita, custo, lucro, media, c};
+    });
+    const tot = linhas.reduce((s, v) => ({n: s.n + v.n, receita: s.receita + v.receita, custo: s.custo + v.custo}), {n: 0, receita: 0, custo: 0});
+    tot.lucro = tot.receita - tot.custo; tot.media = tot.n ? tot.receita / tot.n : 0;
+    const semVan = l.filter(x => !x.tio), recSem = semVan.reduce((s, x) => s + x.parte, 0);
+    const card = (v, total) => {
+      const maior = Math.max(v.receita, v.custo, 1), pos = v.lucro >= 0;
+      const empate = v.media > 0 ? Math.ceil(v.custo / v.media) : null;
+      const verd = !v.n && !total ? `<div class="veredito neg">Sem alunos ainda</div>`
+        : pos ? `<div class="veredito pos">✅ Dando lucro${v.receita ? ` · margem ${Math.round(v.lucro / v.receita * 100)}%` : ""}</div>`
+        : `<div class="veredito neg">⚠️ No prejuízo${empate ? ` · precisa de uns ${empate} alunos pra empatar (tem ${v.n})` : ""}</div>`;
+      return `<div class="v-st${total ? " total" : ""}"><h4>${esc(v.t)}</h4>
+        <div class="lin"><span>Alunos</span><b>${v.n}</b></div>
+        <div class="lin"><span>Receita</span><b>${R(v.receita)}</b></div>
+        <div class="lin"><span>Custos</span><b>${R(v.custo)}</b></div>
+        <div class="v-barra" title="receita x custos"><i style="width:${v.receita / maior * 100}%;background:#1d8a4e"></i></div>
+        <div class="v-barra"><i style="width:${v.custo / maior * 100}%;background:#c2332b"></i></div>
+        <div class="lin"><span>Lucro no mês</span><span class="lucro ${pos ? "pos" : "neg"}">${sinal(v.lucro)}${R(v.lucro)}</span></div>
+        <div class="lin"><span>Lucro no ano (12 meses)</span><b class="${pos ? "pos" : "neg"}">${sinal(v.lucro)}${R(v.lucro * 12)}</b></div>
+        ${v.n ? `<div class="lin"><span>Média por aluno</span><b>${R(v.media)}</b></div><div class="lin"><span>Custo por aluno</span><b>${R(v.custo / v.n)}</b></div>` : ""}
+        ${verd}</div>`;
+    };
+    $("#vStats").innerHTML = linhas.map(v => card(v)).join("") + card({...tot, t: "Total das 4 vans"}, true) +
+      (semVan.length ? `<div class="v-st"><h4>Sem van ainda</h4><div class="lin"><span>Alunos</span><b>${semVan.length}</b></div><div class="lin"><span>Receita fora da conta</span><b>${R(recSem)}</b></div><small>Coloque esses alunos numa van pra entrar no resultado.</small></div>` : "");
+  }
+  $("#abreVans").onclick = () => { $("#painel").hidden = true; $("#vans").hidden = false; window.scrollTo(0, 0); desenhaCustos(); desenhaVans(); };
+  $("#vansVoltar").onclick = () => { $("#vans").hidden = true; $("#painel").hidden = false; desenha(); };
+
   /* ---------- cinema 28/11: inscritos por van, marcar pago ---------- */
   let cine = [], cineTios = ["Tio Daniel","Tia Joyce","Tio Luiz","Tia Cintia"];
   async function carregaCinema(){

@@ -12,7 +12,7 @@
 const ABA = "Renovações";
 const COLS = ["id","token","criado_em","status","responsavel","cpf","rg","celular","fone_casa","outro_fone","email",
               "rua","bairro","cidade","cep","alunos_texto","alunos_json","obs","data_cadastro",
-              "inicio_idx","mensalidade","parcelas","total","data_contrato","liberado_em","assinado_em","arquivo_url","observacao_interna","tipo","assinatura","assinatura_info","assinado_dannis_em","aceite_em","aceite_info","aceite_hash","aceite_valores","ajuste_info"];
+              "inicio_idx","mensalidade","parcelas","total","data_contrato","liberado_em","assinado_em","arquivo_url","observacao_interna","tipo","assinatura","assinatura_info","assinado_dannis_em","aceite_em","aceite_info","aceite_hash","aceite_valores","ajuste_info","vans_json"];
 const STATUS = {AGUARDANDO:"aguardando_valor", LIBERADO:"liberado", ASSINADO:"assinado_online", IMPRESSO:"vai_entregar_impresso", RECEBIDO:"recebido", CANCELADO:"cancelado"};
 const FUSO = "America/Sao_Paulo";
 const SITE = "https://dannistur.github.io/";
@@ -43,6 +43,8 @@ function doPost(e){
       case "admin_cinema":     admin_(req); return json_(cineLista_());
       case "admin_cinema_pago": admin_(req); return json_(cineMarca_(req, "pago"));
       case "admin_cinema_cancelar": admin_(req); return json_(cineMarca_(req, "cancelado"));
+      case "admin_van":        admin_(req); return json_(defineVan_(req));
+      case "admin_custos":     admin_(req); return json_(salvaCustos_(req));
       case "admin_teste_zap":  admin_(req); return json_({ok:true, enviado: avisaDono_("✅ Teste: os avisos da Danni's Tur estão chegando no seu WhatsApp.")});
       default:                 return json_({ok:false, erro:"Ação desconhecida"});
     }
@@ -210,7 +212,32 @@ function admin_(req){
 function lista_(){
   const sh = aba_(), vals = sh.getDataRange().getValues(); vals.shift();
   const familias = vals.filter(l => l[0] !== "").map(l => completo_(obj_(l)));
-  return {ok:true, familias, hoje: hoje_(), assinaturaDannis: cfg_("assinatura_dannis")};
+  let custosVans = {}; try { custosVans = JSON.parse(cfg_("custos_vans") || "{}"); } catch(e){}
+  return {ok:true, familias, hoje: hoje_(), assinaturaDannis: cfg_("assinatura_dannis"), custosVans};
+}
+
+/* vans: em qual van (tio/tia) cada aluno vai. Fica na coluna vans_json, um item por aluno, na mesma ordem dos alunos */
+function defineVan_(req){
+  const tio = String(req.tio || ""), idx = Math.round(Number(req.idx));
+  if (tio && TIOS.indexOf(tio) < 0) throw erro_("Van inválida.");
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const r = porId_(req.id); if (!r) throw erro_("Família não encontrada.");
+    let alunos = []; try { alunos = JSON.parse(r.obj.alunos_json || "[]"); } catch(e){}
+    if (!(idx >= 0 && idx < alunos.length)) throw erro_("Aluno não encontrado.");
+    let vans = []; try { vans = JSON.parse(r.obj.vans_json || "[]"); } catch(e){}
+    while (vans.length < alunos.length) vans.push("");
+    vans[idx] = tio;
+    atualiza_(r.linha, {vans_json: JSON.stringify(vans)});
+    return {ok: true, id: req.id, vans};
+  } finally { lock.releaseLock(); }
+}
+/* custos mensais de cada van (motorista, monitora, combustível...), guardados na aba Config */
+function salvaCustos_(req){
+  const campos = ["motorista","monitora","combustivel","pneus","gerais"], c = req.custos || {}, limpo = {};
+  TIOS.forEach(t => { const v = c[t] || {}; limpo[t] = {}; campos.forEach(k => { const n = Math.round(Number(v[k] || 0) * 100) / 100; limpo[t][k] = n >= 0 && n < 1e6 ? n : 0; }); });
+  setCfg_("custos_vans", JSON.stringify(limpo));
+  return {ok: true, custosVans: limpo};
 }
 
 /* assinatura da Danni's Tur: desenhada uma vez no admin e reaproveitada em todos os contratos */
@@ -492,7 +519,7 @@ function publico_(o){
     valores:{ini:o.inicio_idx, mensalidade:o.mensalidade, parcelas:o.parcelas, total:o.total, dataContrato:String(o.data_contrato||"").slice(0,10)}
   };
 }
-function completo_(o){ const f = publico_(o); f.token = o.token; f.criadoEm = o.criado_em; f.liberadoEm = o.liberado_em; f.assinadoEm = o.assinado_em; f.arquivo = o.arquivo_url; f.obsInterna = o.observacao_interna; f.assinadoDannisEm = o.assinado_dannis_em || ""; return f; }
+function completo_(o){ const f = publico_(o); f.token = o.token; f.criadoEm = o.criado_em; f.liberadoEm = o.liberado_em; f.assinadoEm = o.assinado_em; f.arquivo = o.arquivo_url; f.obsInterna = o.observacao_interna; f.assinadoDannisEm = o.assinado_dannis_em || ""; try { f.vans = JSON.parse(o.vans_json || "[]"); } catch(e){ f.vans = []; } return f; }
 function limpa_(v, max){ return String(v == null ? "" : v).replace(/[\u0000-\u001f]/g," ").trim().slice(0, max||200); }
 function brl_(n){ return Number(n).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
 function fmt_(iso){ return iso ? String(iso).split("-").reverse().join("/") : ""; }
