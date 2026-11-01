@@ -206,7 +206,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
     <div class="card" style="gap:12px">
       <h2 style="font-size:24px">📊 Resultado de cada van (por mês)</h2>
-      <p class="dica" style="margin:0">A receita é a mensalidade dos alunos de cada van (irmãos dividem a mensalidade da família). Coloque os custos de cada van por mês; pneus e gastos do ano, divida por 12.</p>
+      <p class="dica" style="margin:0">A receita é a mensalidade dos alunos de cada van (irmãos dividem a mensalidade da família). Coloque os custos de cada van por mês (salário do motorista e da monitora, combustível...). Pneus e gastos do ano, divida por 12.</p>
       <div class="v-custos-wrap"><table class="v-custos" id="vCustos"></table></div>
       <div class="btns" style="grid-template-columns:auto;justify-content:start"><button class="btn btn-pri" type="button" id="vSalvaCustos">Salvar custos</button></div>
       <p class="ok-msg" id="vCustosMsg" role="status"></p>
@@ -302,7 +302,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   }
   /* ---------- vans: alunos por motorista + resultado de cada van ---------- */
   const TIOS_V = [{nome:"Tio Daniel", fone:"19997781210"}, {nome:"Tia Joyce", fone:"19988761202"}, {nome:"Tio Luiz", fone:"19997499380"}, {nome:"Tia Cintia", fone:"19981163312"}];
-  const CUSTOS = [["motorista","Motorista",2500],["monitora","Monitora",850],["combustivel","Combustível",0],["pneus","Pneus e manutenção",0],["gerais","Despesas gerais",0]];
+  const CUSTOS = [["motorista","Salário do motorista",0],["monitora","Salário da monitora",0],["combustivel","Combustível",0],["pneus","Pneus e manutenção",0],["gerais","Despesas gerais",0]];
   let custosVans = {}, abaVan = "sem";
   const fechado = f => !!f.aceiteEm || ["assinado_online","recebido","vai_entregar_impresso"].includes(f.status);
   function alunosVans(){
@@ -368,7 +368,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   function custoDe(t){ const c = custosVans[t] || {}; return Object.fromEntries(CUSTOS.map(([k, , pad]) => [k, c[k] != null ? +c[k] : pad])); }
   function desenhaCustos(){
     $("#vCustos").innerHTML = `<tr><th>Por mês (R$)</th>${TIOS_V.map(t => `<th>${esc(t.nome)}</th>`).join("")}</tr>` +
-      CUSTOS.map(([k, rot]) => `<tr><td>${rot}</td>${TIOS_V.map(t => `<td><input type="text" inputmode="decimal" data-t="${esc(t.nome)}" data-k="${k}" value="${brl(custoDe(t.nome)[k]) || "0,00"}"></td>`).join("")}</tr>`).join("");
+      CUSTOS.map(([k, rot]) => `<tr><td>${rot}</td>${TIOS_V.map(t => `<td><input type="text" inputmode="decimal" data-t="${esc(t.nome)}" data-k="${k}" value="${brl(custoDe(t.nome)[k])}" placeholder="0,00"></td>`).join("")}</tr>`).join("");
     $("#vCustos").querySelectorAll("input").forEach(i => i.oninput = () => { const t = i.dataset.t; custosVans[t] = custoDe(t); custosVans[t][i.dataset.k] = num(i.value); desenhaResultado(alunosVans()); });
   }
   $("#vSalvaCustos").onclick = async () => {
