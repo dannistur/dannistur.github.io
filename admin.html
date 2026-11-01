@@ -112,6 +112,21 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 .v-custos{border-collapse:collapse;font-size:14px;min-width:560px}
 .v-custos th,.v-custos td{padding:6px 8px;border-bottom:1px solid var(--linha);text-align:left}
 .v-custos input{width:110px;padding:6px 8px;border:1.5px solid var(--linha);border-radius:8px;font:inherit}
+.v-custos th{vertical-align:bottom}
+.v-custos th:first-child,.v-custos td:first-child{position:sticky;left:0;z-index:1;background:#fff;min-width:130px;max-width:170px;box-shadow:2px 0 0 var(--linha)}
+.v-custos .v-rec td:first-child{background:#f3faf5}
+.v-custos .v-nome{width:140px;font-weight:700}
+.v-custos .v-rec td{background:#f3faf5}
+.v-est{display:block;margin-top:3px;border:0;background:none;color:var(--roxo);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer;padding:0}
+.v-reserva{border:1.5px solid var(--linha);border-radius:14px;padding:12px;display:grid;gap:10px}
+.v-rgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.v-rp{display:grid;gap:3px;font-size:13px;font-weight:600}
+.v-in{display:flex;align-items:center;gap:6px}
+.v-in input{width:100%;padding:7px 9px;border:1.5px solid var(--linha);border-radius:8px;font:inherit;font-size:15px}
+.v-rres{display:grid;gap:4px;font-size:14px}
+.v-rres div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--linha);padding:3px 0}
+.v-rres .dest{background:#fff4c2;border-radius:8px;padding:6px 8px;border:0;font-weight:700}
+.v-rres .dest b{font-size:18px}
 .v-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
 .v-st{border:1px solid var(--linha);border-radius:14px;padding:12px;display:grid;gap:6px;font-size:14px}
 .v-st h4{margin:0;font-family:var(--f-display);font-size:18px;color:var(--roxo)}
@@ -206,9 +221,11 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
     <div class="card" style="gap:12px">
       <h2 style="font-size:24px">📊 Resultado de cada van (por mês)</h2>
-      <p class="dica" style="margin:0">A receita é a mensalidade dos alunos de cada van (irmãos dividem a mensalidade da família). Coloque os custos de cada van por mês (salário do motorista e da monitora, combustível...). Pneus e gastos do ano, divida por 12.</p>
+      <p class="dica" style="margin:0">Nas vans escolares a receita é a mensalidade dos alunos (irmãos dividem a mensalidade da família). Na van de empresa, coloque o valor da nota. Custos por mês; pneus, seguro e gastos do ano, divida por 12.</p>
       <div class="v-custos-wrap"><table class="v-custos" id="vCustos"></table></div>
-      <div class="btns" style="grid-template-columns:auto;justify-content:start"><button class="btn btn-pri" type="button" id="vSalvaCustos">Salvar custos</button></div>
+      <div class="v-acoes"><button class="btn btn-sec" type="button" id="vAddEmp">+ Van de empresa (fretamento)</button></div>
+      <div class="v-reserva" id="vReserva"></div>
+      <div class="btns" style="grid-template-columns:auto;justify-content:start"><button class="btn btn-pri" type="button" id="vSalvaCustos">Salvar</button></div>
       <p class="ok-msg" id="vCustosMsg" role="status"></p>
       <div id="vStats" class="v-stats"></div>
     </div>
@@ -297,13 +314,19 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
   async function carregar(){
     $("#painelMsg").textContent = "Carregando…";
-    try{ const r = await api("admin_lista", {senha}); familias = r.familias.reverse(); minhaAssinatura = r.assinaturaDannis || ""; custosVans = r.custosVans || {}; mostraMinhaAss(); $("#painelMsg").textContent = ""; desenha(); resumoVans(); if (!$("#vans").hidden){ desenhaCustos(); desenhaVans(); } abrePeloLink(); carregaCinema(); }
+    try{ const r = await api("admin_lista", {senha}); familias = r.familias.reverse(); minhaAssinatura = r.assinaturaDannis || ""; custosVans = normalizaCustos(r.custosVans); mostraMinhaAss(); $("#painelMsg").textContent = ""; desenha(); resumoVans(); if (!$("#vans").hidden){ desenhaCustos(); desenhaVans(); } abrePeloLink(); carregaCinema(); }
     catch(e){ if (e.codigo==="senha"){ sair(); } else $("#painelMsg").textContent = "Não consegui carregar. Toque em Atualizar."; }
   }
   /* ---------- vans: alunos por motorista + resultado de cada van ---------- */
   const TIOS_V = [{nome:"Tio Daniel", fone:"19997781210"}, {nome:"Tia Joyce", fone:"19988761202"}, {nome:"Tio Luiz", fone:"19997499380"}, {nome:"Tia Cintia", fone:"19981163312"}];
-  const CUSTOS = [["motorista","Salário do motorista",0],["monitora","Salário da monitora",0],["combustivel","Combustível",0],["pneus","Pneus e manutenção",0],["gerais","Despesas gerais",0]];
-  let custosVans = {}, abaVan = "sem";
+  const CUSTOS = [["motorista","Salário do motorista"],["monitora","Salário da monitora"],["encargos","Custo do funcionário pra empresa (FGTS, 13º, férias, INSS…)"],["combustivel","Combustível"],["pneus","Pneus e manutenção"],["pedagios","Pedágios"],["seguro","Seguro da van"],["gerais","Despesas gerais"]];
+  const RESERVA_PADRAO = {preco: 350000, anos: 6, inflacao: 4.5, depreciacao: 10, rendimento: 8, incluir: true};
+  let custosVans = {vans: {}, empresas: [], reserva: {...RESERVA_PADRAO}}, abaVan = "sem";
+  function normalizaCustos(c){   // formato antigo: {"Tio Daniel": {...}} → {vans:{...}}
+    c = c || {};
+    if (!c.vans) c = {vans: Object.fromEntries(Object.entries(c).filter(([k]) => TIOS_V.some(t => t.nome === k))), empresas: [], reserva: {}};
+    return {vans: c.vans || {}, empresas: c.empresas || [], reserva: {...RESERVA_PADRAO, ...(c.reserva || {})}};
+  }
   const fechado = f => !!f.aceiteEm || ["assinado_online","recebido","vai_entregar_impresso"].includes(f.status);
   function alunosVans(){
     const so = !$("#vTodos").checked, lista = [];
@@ -364,48 +387,105 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   };
   $("#vTodos").onchange = desenhaVans;
 
-  /* custos e resultado */
-  function custoDe(t){ const c = custosVans[t] || {}; return Object.fromEntries(CUSTOS.map(([k, , pad]) => [k, c[k] != null ? +c[k] : pad])); }
+  /* custos e resultado: 4 vans escolares (receita = mensalidades) + vans de empresa (receita = valor da nota) */
+  const colunas = () => [...TIOS_V.map(t => ({k: t.nome, nome: t.nome})), ...custosVans.empresas.map(e => ({k: e.id, nome: e.nome || "Empresa", emp: e}))];
+  function custoDe(k){ const c = custosVans.vans[k] || {}; return Object.fromEntries(CUSTOS.map(([f]) => [f, +c[f] || 0])); }
+  const valIn = v => v ? brl(v) : "";
   function desenhaCustos(){
-    $("#vCustos").innerHTML = `<tr><th>Por mês (R$)</th>${TIOS_V.map(t => `<th>${esc(t.nome)}</th>`).join("")}</tr>` +
-      CUSTOS.map(([k, rot]) => `<tr><td>${rot}</td>${TIOS_V.map(t => `<td><input type="text" inputmode="decimal" data-t="${esc(t.nome)}" data-k="${k}" value="${brl(custoDe(t.nome)[k])}" placeholder="0,00"></td>`).join("")}</tr>`).join("");
-    $("#vCustos").querySelectorAll("input").forEach(i => i.oninput = () => { const t = i.dataset.t; custosVans[t] = custoDe(t); custosVans[t][i.dataset.k] = num(i.value); desenhaResultado(alunosVans()); });
+    const cols = colunas(), alunos = alunosVans();
+    const recEsc = k => alunos.filter(x => x.tio === k).reduce((s, x) => s + x.parte, 0);
+    $("#vCustos").innerHTML =
+      `<tr><th>Por mês (R$)</th>${cols.map(c => c.emp ? `<th><input class="v-nome" type="text" data-e="${esc(c.k)}" value="${esc(c.emp.nome)}" placeholder="Nome da empresa"><button type="button" class="bt-x" data-rem="${esc(c.k)}">tirar</button></th>` : `<th>${esc(c.nome)}</th>`).join("")}</tr>` +
+      `<tr class="v-rec"><td><b>Receita</b></td>${cols.map(c => c.emp ? `<td><input type="text" inputmode="decimal" data-nota="${esc(c.k)}" value="${valIn(c.emp.nota)}" placeholder="valor da nota"></td>` : `<td><small>alunos: R$ ${brl(recEsc(c.k)) || "0,00"}</small></td>`).join("")}</tr>` +
+      CUSTOS.map(([f, rot]) => `<tr><td>${rot}</td>${cols.map(c => `<td><input type="text" inputmode="decimal" data-t="${esc(c.k)}" data-k="${f}" value="${valIn(custoDe(c.k)[f])}" placeholder="0,00">${f === "encargos" ? `<button type="button" class="v-est" data-t="${esc(c.k)}" title="FGTS 8% + 13º (8,33%) + férias com 1/3 (11,11%) + FGTS sobre eles ≈ 29% dos salários">≈ 29% dos salários</button>` : ""}</td>`).join("")}</tr>`).join("");
+    const T = $("#vCustos");
+    T.querySelectorAll("input[data-k]").forEach(i => i.oninput = () => { const k = i.dataset.t; custosVans.vans[k] = custoDe(k); custosVans.vans[k][i.dataset.k] = num(i.value); desenhaResultado(alunosVans()); });
+    T.querySelectorAll("input[data-nota]").forEach(i => i.oninput = () => { const e = custosVans.empresas.find(x => x.id === i.dataset.nota); if (e){ e.nota = num(i.value); desenhaResultado(alunosVans()); } });
+    T.querySelectorAll("input.v-nome").forEach(i => i.oninput = () => { const e = custosVans.empresas.find(x => x.id === i.dataset.e); if (e){ e.nome = i.value; desenhaResultado(alunosVans()); } });
+    T.querySelectorAll("[data-rem]").forEach(b => b.onclick = () => { const e = custosVans.empresas.find(x => x.id === b.dataset.rem); if (!e || !confirm(`Tirar a van da empresa ${e.nome || ""}? (só vale depois de salvar)`)) return; custosVans.empresas = custosVans.empresas.filter(x => x !== e); delete custosVans.vans[e.id]; desenhaCustos(); desenhaResultado(alunosVans()); });
+    T.querySelectorAll(".v-est").forEach(b => b.onclick = () => { const k = b.dataset.t, c = custoDe(k); custosVans.vans[k] = {...c, encargos: Math.round((c.motorista + c.monitora) * 0.29 * 100) / 100}; desenhaCustos(); desenhaResultado(alunosVans()); });
+    desenhaReserva();
   }
+  $("#vAddEmp").onclick = () => {
+    const n = Math.max(0, ...custosVans.empresas.map(e => +e.id.slice(1) || 0)) + 1;
+    custosVans.empresas.push({id: "e" + n, nome: "", nota: 0}); desenhaCustos(); desenhaResultado(alunosVans());
+    const i = $("#vCustos").querySelector(`input.v-nome[data-e="e${n}"]`); if (i) i.focus();
+  };
   $("#vSalvaCustos").onclick = async () => {
     $("#vCustosMsg").textContent = "Salvando…";
-    try { const r = await api("admin_custos", {senha, custos: Object.fromEntries(TIOS_V.map(t => [t.nome, custoDe(t.nome)]))}); custosVans = r.custosVans; $("#vCustosMsg").textContent = "Custos salvos."; }
+    const vans = Object.fromEntries(colunas().map(c => [c.k, custoDe(c.k)]));
+    try { const r = await api("admin_custos", {senha, custos: {vans, empresas: custosVans.empresas, reserva: custosVans.reserva}}); custosVans = normalizaCustos(r.custosVans); $("#vCustosMsg").textContent = "Salvo."; desenhaCustos(); desenhaResultado(alunosVans()); }
     catch(e){ $("#vCustosMsg").textContent = e.message; }
     setTimeout(() => { $("#vCustosMsg").textContent = ""; }, 3000);
   };
+
+  /* reserva pra trocar a van sem financiar: preço futuro (inflação) − revenda da van atual (depreciação) */
+  function calcReserva(){
+    const r = custosVans.reserva, n = Math.max(1, +r.anos || 6), meses = n * 12;
+    const futuro = r.preco * Math.pow(1 + r.inflacao / 100, n);
+    const revenda = r.preco * Math.pow(1 - r.depreciacao / 100, n);
+    const falta = Math.max(0, futuro - revenda);
+    const parado = falta / meses;
+    const rm = Math.pow(1 + r.rendimento / 100, 1 / 12) - 1;
+    const aplicado = rm > 0 ? falta * rm / (Math.pow(1 + rm, meses) - 1) : parado;
+    return {n, futuro, revenda, falta, parado, aplicado, porMes: r.rendimento > 0 ? aplicado : parado};
+  }
+  function desenhaReserva(){
+    const r = custosVans.reserva, R = v => `R$ ${brl(v) || "0,00"}`, c = calcReserva();
+    const campo = (k, rot, suf, dec) => `<label class="v-rp"><span>${rot}</span><span class="v-in"><input type="text" inputmode="decimal" data-r="${k}" value="${dec ? String(r[k]).replace(".", ",") : brl(r[k])}">${suf}</span></label>`;
+    $("#vReserva").innerHTML = `<h3 style="font-size:20px;margin:0">🔄 Reserva pra trocar a van</h3>
+      <p class="dica" style="margin:0">Quanto guardar por mês, em cada van, pra comprar outra à vista quando chegar a hora. Inflação, depreciação e rendimento são estimativas: ajuste com o que você acha.</p>
+      <div class="v-rgrid">${campo("preco", "Preço de uma van hoje", "", false)}${campo("anos", "Trocar daqui a quantos anos", "anos", true)}${campo("inflacao", "Inflação por ano", "%", true)}${campo("depreciacao", "Depreciação da van por ano", "%", true)}${campo("rendimento", "Rendimento do dinheiro guardado por ano", "%", true)}</div>
+      <div class="v-rres">
+        <div><span>Van nova em ${c.n} anos (com inflação)</span><b>${R(c.futuro)}</b></div>
+        <div><span>Venda da van atual em ${c.n} anos</span><b>${R(c.revenda)}</b></div>
+        <div><span>Falta juntar</span><b>${R(c.falta)}</b></div>
+        <div class="dest"><span>Guardar por mês (aplicado rendendo ${String(r.rendimento).replace(".", ",")}% ao ano)</span><b>${R(c.aplicado)}</b></div>
+        <div><span>Guardar por mês (parado, sem render)</span><b>${R(c.parado)}</b></div>
+      </div>
+      <label class="check" style="font-size:14px"><input type="checkbox" id="vInclui" ${r.incluir ? "checked" : ""}> Descontar essa reserva no lucro de cada van</label>`;
+    $("#vReserva").querySelectorAll("input[data-r]").forEach(i => i.oninput = () => { custosVans.reserva[i.dataset.r] = i.dataset.r === "preco" ? num(i.value) : (parseFloat(i.value.replace(",", ".")) || 0); atualizaReserva(); });
+    $("#vInclui").onchange = e => { custosVans.reserva.incluir = e.target.checked; desenhaResultado(alunosVans()); };
+  }
+  function atualizaReserva(){   // atualiza os números sem redesenhar os campos (não perde o cursor)
+    const c = calcReserva(), R = v => `R$ ${brl(v) || "0,00"}`, b = $("#vReserva").querySelectorAll(".v-rres b");
+    [c.futuro, c.revenda, c.falta, c.aplicado, c.parado].forEach((v, i) => { if (b[i]) b[i].textContent = R(v); });
+    const d = $("#vReserva").querySelector(".v-rres .dest span"); if (d) d.textContent = `Guardar por mês (aplicado rendendo ${String(custosVans.reserva.rendimento).replace(".", ",")}% ao ano)`;
+    desenhaResultado(alunosVans());
+  }
+
   function desenhaResultado(l){
-    const R = v => `R$ ${brl(Math.abs(v)) || "0,00"}`, sinal = v => v < 0 ? "−" : "";
-    const linhas = TIOS_V.map(t => {
-      const al = l.filter(x => x.tio === t.nome), receita = al.reduce((s, x) => s + x.parte, 0);
-      const c = custoDe(t.nome), custo = Object.values(c).reduce((s, v) => s + v, 0), lucro = receita - custo;
-      const media = al.length ? receita / al.length : 0;
-      return {t: t.nome, n: al.length, receita, custo, lucro, media, c};
+    const R = v => `R$ ${brl(Math.abs(v)) || "0,00"}`, sinal = v => v < -0.004 ? "−" : "";
+    const res = calcReserva(), reservaMes = custosVans.reserva.incluir ? res.porMes : 0;
+    const linhas = colunas().map(c => {
+      const al = c.emp ? [] : l.filter(x => x.tio === c.k);
+      const receita = c.emp ? +c.emp.nota || 0 : al.reduce((s, x) => s + x.parte, 0);
+      const custo = Object.values(custoDe(c.k)).reduce((s, v) => s + v, 0), lucro = receita - custo - reservaMes;
+      return {t: c.emp ? `🏢 ${c.nome}` : c.nome, emp: !!c.emp, n: al.length, receita, custo, lucro, media: al.length ? receita / al.length : 0};
     });
-    const tot = linhas.reduce((s, v) => ({n: s.n + v.n, receita: s.receita + v.receita, custo: s.custo + v.custo}), {n: 0, receita: 0, custo: 0});
-    tot.lucro = tot.receita - tot.custo; tot.media = tot.n ? tot.receita / tot.n : 0;
+    const tot = linhas.reduce((s, v) => ({n: s.n + v.n, receita: s.receita + v.receita, custo: s.custo + v.custo, lucro: s.lucro + v.lucro, nv: s.nv + 1}), {n: 0, receita: 0, custo: 0, lucro: 0, nv: 0});
+    tot.media = tot.n ? linhas.filter(v => !v.emp).reduce((s, v) => s + v.receita, 0) / tot.n : 0;
     const semVan = l.filter(x => !x.tio), recSem = semVan.reduce((s, x) => s + x.parte, 0);
     const card = (v, total) => {
-      const maior = Math.max(v.receita, v.custo, 1), pos = v.lucro >= 0;
-      const empate = v.media > 0 ? Math.ceil(v.custo / v.media) : null;
-      const verd = !v.n && !total ? `<div class="veredito neg">Sem alunos ainda</div>`
+      const maior = Math.max(v.receita, v.custo + (total ? reservaMes * tot.nv : reservaMes), 1), pos = v.lucro >= 0;
+      const res1 = total ? reservaMes * tot.nv : reservaMes;
+      const empate = !v.emp && v.media > 0 ? Math.ceil((v.custo + res1) / v.media) : null;
+      const verd = !v.receita && !total ? `<div class="veredito neg">${v.emp ? "Coloque o valor da nota" : "Sem alunos ainda"}</div>`
         : pos ? `<div class="veredito pos">✅ Dando lucro${v.receita ? ` · margem ${Math.round(v.lucro / v.receita * 100)}%` : ""}</div>`
-        : `<div class="veredito neg">⚠️ No prejuízo${empate ? ` · precisa de uns ${empate} alunos pra empatar (tem ${v.n})` : ""}</div>`;
+        : `<div class="veredito neg">⚠️ No prejuízo${empate && !total ? ` · precisa de uns ${empate} alunos pra empatar (tem ${v.n})` : v.emp ? ` · a nota precisa ser de pelo menos ${R(v.custo + res1)}` : ""}</div>`;
       return `<div class="v-st${total ? " total" : ""}"><h4>${esc(v.t)}</h4>
-        <div class="lin"><span>Alunos</span><b>${v.n}</b></div>
-        <div class="lin"><span>Receita</span><b>${R(v.receita)}</b></div>
+        ${v.emp ? "" : `<div class="lin"><span>Alunos</span><b>${v.n}</b></div>`}
+        <div class="lin"><span>${v.emp ? "Valor da nota" : "Receita"}</span><b>${R(v.receita)}</b></div>
         <div class="lin"><span>Custos</span><b>${R(v.custo)}</b></div>
-        <div class="v-barra" title="receita x custos"><i style="width:${v.receita / maior * 100}%;background:#1d8a4e"></i></div>
-        <div class="v-barra"><i style="width:${v.custo / maior * 100}%;background:#c2332b"></i></div>
-        <div class="lin"><span>Lucro no mês</span><span class="lucro ${pos ? "pos" : "neg"}">${sinal(v.lucro)}${R(v.lucro)}</span></div>
+        ${res1 ? `<div class="lin"><span>Reserva pra trocar a van</span><b>${R(res1)}</b></div>` : ""}
+        <div class="v-barra" title="receita"><i style="width:${v.receita / maior * 100}%;background:#1d8a4e"></i></div>
+        <div class="v-barra" title="custos + reserva"><i style="width:${(v.custo + res1) / maior * 100}%;background:#c2332b"></i></div>
+        <div class="lin"><span>Lucro no mês${res1 ? " (depois da reserva)" : ""}</span><span class="lucro ${pos ? "pos" : "neg"}">${sinal(v.lucro)}${R(v.lucro)}</span></div>
         <div class="lin"><span>Lucro no ano (12 meses)</span><b class="${pos ? "pos" : "neg"}">${sinal(v.lucro)}${R(v.lucro * 12)}</b></div>
-        ${v.n ? `<div class="lin"><span>Média por aluno</span><b>${R(v.media)}</b></div><div class="lin"><span>Custo por aluno</span><b>${R(v.custo / v.n)}</b></div>` : ""}
+        ${v.n ? `<div class="lin"><span>Média por aluno</span><b>${R(v.media)}</b></div><div class="lin"><span>Custo por aluno</span><b>${R((v.custo + res1) / v.n)}</b></div>` : ""}
         ${verd}</div>`;
     };
-    $("#vStats").innerHTML = linhas.map(v => card(v)).join("") + card({...tot, t: "Total das 4 vans"}, true) +
+    $("#vStats").innerHTML = linhas.map(v => card(v)).join("") + card({...tot, t: `Total das ${tot.nv} vans`}, true) +
       (semVan.length ? `<div class="v-st"><h4>Sem van ainda</h4><div class="lin"><span>Alunos</span><b>${semVan.length}</b></div><div class="lin"><span>Receita fora da conta</span><b>${R(recSem)}</b></div><small>Coloque esses alunos numa van pra entrar no resultado.</small></div>` : "");
   }
   $("#abreVans").onclick = () => { $("#painel").hidden = true; $("#vans").hidden = false; window.scrollTo(0, 0); desenhaCustos(); desenhaVans(); };

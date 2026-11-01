@@ -232,10 +232,20 @@ function defineVan_(req){
     return {ok: true, id: req.id, vans};
   } finally { lock.releaseLock(); }
 }
-/* custos mensais de cada van (motorista, monitora, combustível...), guardados na aba Config */
+/* custos mensais de cada van (salários, encargos, combustível, pedágio, seguro...), vans de empresa (receita = valor da nota)
+   e os parâmetros da reserva pra trocar a van. Tudo guardado na aba Config. */
 function salvaCustos_(req){
-  const campos = ["motorista","monitora","combustivel","pneus","gerais"], c = req.custos || {}, limpo = {};
-  TIOS.forEach(t => { const v = c[t] || {}; limpo[t] = {}; campos.forEach(k => { const n = Math.round(Number(v[k] || 0) * 100) / 100; limpo[t][k] = n >= 0 && n < 1e6 ? n : 0; }); });
+  const c = req.custos || {}, nn = (v, max) => { const n = Math.round(Number(v || 0) * 100) / 100; return n >= 0 && n <= (max || 1e7) ? n : 0; };
+  const campos = ["motorista","monitora","encargos","combustivel","pneus","pedagios","seguro","gerais"];
+  const empresas = (Array.isArray(c.empresas) ? c.empresas : []).slice(0, 10).map((e, i) => ({
+    id: /^e\d{1,8}$/.test(String(e.id || "")) ? String(e.id) : "e" + (i + 1), nome: limpa_(e.nome, 60), nota: nn(e.nota)
+  }));
+  const chaves = TIOS.concat(empresas.map(e => e.id)), vans = {};
+  chaves.forEach(k => { const v = (c.vans || {})[k] || {}; vans[k] = {}; campos.forEach(f => vans[k][f] = nn(v[f])); });
+  const r = c.reserva || {};
+  const reserva = {preco: nn(r.preco), anos: Math.min(20, Math.max(1, Math.round(Number(r.anos) || 6))), inflacao: nn(r.inflacao, 50),
+                   depreciacao: nn(r.depreciacao, 50), rendimento: nn(r.rendimento, 50), incluir: r.incluir !== false};
+  const limpo = {vans, empresas, reserva};
   setCfg_("custos_vans", JSON.stringify(limpo));
   return {ok: true, custosVans: limpo};
 }
