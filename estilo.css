@@ -444,3 +444,8 @@ img.van{height:auto}
 .cine-cta{display:block;text-align:center;color:#3f1142;font-weight:800;font-size:16px;padding:10px 12px;animation:cta-pulsa 1.6s ease-in-out infinite}
 @keyframes cta-pulsa{50%{transform:scale(1.04)}}
 @media (prefers-reduced-motion:reduce){.cine-cta{animation:none}}
+
+/* renovação e contrato novo ainda fechados: aparecem com "EM BREVE" e não abrem */
+.acao.breve{position:relative;cursor:default;filter:grayscale(.55);opacity:.72;pointer-events:none}
+.acao.breve:hover,.acao.breve:active{transform:none;box-shadow:0 5px 0 rgba(0,0,0,.18)}
+.selo-breve{position:absolute;top:-9px;right:12px;background:#fff;color:var(--roxo);border:2px solid var(--roxo);font-family:var(--f-display);font-weight:800;font-size:13px;letter-spacing:.06em;padding:3px 10px;border-radius:999px;box-shadow:0 2px 0 rgba(0,0,0,.15)}

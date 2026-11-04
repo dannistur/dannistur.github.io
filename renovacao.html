@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=33">
+<link rel="stylesheet" href="estilo.css?v=34">
 <style>body{margin:0}</style>
 </head>
 <body>
@@ -31,6 +31,16 @@
   <a href="./" class="barra-logo"><img src="logo.png" alt="Danni's Tur" width="750" height="160"></a>
 </nav>
 
+<div class="card" id="emBreve" style="max-width:560px;margin:40px auto;text-align:center;display:grid;gap:12px;justify-items:center">
+  <div style="font-size:48px">🚐</div>
+  <h2 style="margin:0;font-family:var(--f-display);font-style:italic;color:var(--roxo)">Em breve!</h2>
+  <p style="margin:0">A renovação e as matrículas 2027 abrem logo. Agora é a vez do nosso <b>passeio da van no cinema</b> 🎬</p>
+  <a class="btn btn-pri" href="cinema.html">Inscrever no passeio do cinema</a>
+  <a class="btn btn-link" href="./">Voltar pro início</a>
+</div>
+<script>/* renovação ainda fechada (abre com ?teste pra Danni's conferir) */
+if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{display:none!important}</style>'); else document.getElementById("emBreve").remove();
+</script>
 <main class="renova" id="renovar">
   <div class="wrap">
     <div class="titulo-sec">
