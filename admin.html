@@ -314,7 +314,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
   async function carregar(){
     $("#painelMsg").textContent = "Carregando…";
-    try{ const r = await api("admin_lista", {senha}); familias = r.familias.reverse(); minhaAssinatura = r.assinaturaDannis || ""; custosVans = normalizaCustos(r.custosVans); mostraMinhaAss(); $("#painelMsg").textContent = ""; desenha(); resumoVans(); if (!$("#vans").hidden){ desenhaCustos(); desenhaVans(); } abrePeloLink(); carregaCinema(); }
+    try{ const r = await api("admin_lista", {senha}); familias = r.familias.reverse(); minhaAssinatura = r.assinaturaDannis || ""; window.__dtMinhaAssinatura = minhaAssinatura; custosVans = normalizaCustos(r.custosVans); mostraMinhaAss(); $("#painelMsg").textContent = ""; desenha(); resumoVans(); if (!$("#vans").hidden){ desenhaCustos(); desenhaVans(); } abrePeloLink(); carregaCinema(); }
     catch(e){ if (e.codigo==="senha"){ sair(); } else $("#painelMsg").textContent = "Não consegui carregar. Toque em Atualizar."; }
   }
   /* ---------- vans: alunos por motorista + resultado de cada van ---------- */
@@ -713,7 +713,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   $("#limpaDannis").onclick = () => padD.limpa();
   $("#salvaDannis").onclick = async () => {
     const b = $("#salvaDannis"); b.disabled = true; b.textContent = "Salvando…"; $("#assErr").textContent = "";
-    try { const img = padD.imagem(); await api("admin_minha_assinatura", {senha, assinatura: img}); minhaAssinatura = img; mostraMinhaAss(); if (atual) estado(); }
+    try { const img = padD.imagem(); await api("admin_minha_assinatura", {senha, assinatura: img}); minhaAssinatura = img; window.__dtMinhaAssinatura = img; mostraMinhaAss(); if (atual) estado(); }
     catch(e){ $("#assErr").textContent = e.message || "Não consegui salvar. Tente de novo."; b.disabled = false; }
     b.textContent = "Salvar minha assinatura";
   };
@@ -775,5 +775,6 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   if (senha && API) entrar().catch(sair);
 })();
 </script>
+<script src="locacao.js?v=1"></script>
 </body>
 </html>
