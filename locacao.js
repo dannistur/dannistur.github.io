@@ -75,12 +75,12 @@
           <div class="campo"><label for="lcComb">Combustível na entrega</label><select id="lcComb"><option value="">— preencher na hora —</option>${COMBUSTIVEL.map(c => `<option>${c}</option>`).join("")}</select></div>
           <div class="campo"><label for="lcInicio">Início da locação</label><input id="lcInicio" type="date"></div>
           <div class="campo"><label for="lcFim">Fim da locação <span class="opc">(em branco = sem data)</span></label><input id="lcFim" type="date"></div>
-          <div class="campo"><label for="lcValor">Valor do aluguel (R$)</label><input id="lcValor" inputmode="decimal" placeholder="0,00"></div>
-          <div class="campo"><label for="lcPer">Cobrado por</label><select id="lcPer"><option value="mês">mês</option><option value="semana">semana</option><option value="dia">dia</option></select></div>
-          <div class="campo"><label for="lcVenc">Vencimento</label><input id="lcVenc" placeholder="todo dia 10"></div>
+          <div class="campo"><label for="lcPer">Como vai cobrar</label><select id="lcPer"><option value="mês">Por mês (valor fixo)</option><option value="semana">Por semana (valor fixo)</option><option value="dia">Por dia (diária)</option><option value="km">Por KM rodado</option></select></div>
+          <div class="campo"><label for="lcValor" id="lcValorLbl">Valor do aluguel por mês (R$)</label><input id="lcValor" inputmode="decimal" placeholder="0,00"></div>
+          <div class="campo"><label for="lcVenc" id="lcVencLbl">Vencimento</label><input id="lcVenc" placeholder="todo dia 10"></div>
           <div class="campo"><label for="lcCaucao">Caução (R$) <span class="opc">(opcional)</span></label><input id="lcCaucao" inputmode="decimal" placeholder="0,00"></div>
-          <div class="campo"><label for="lcKmLim">Limite de KM por mês <span class="opc">(em branco = livre)</span></label><input id="lcKmLim" inputmode="numeric"></div>
-          <div class="campo"><label for="lcKmExc">Valor do KM excedente (R$)</label><input id="lcKmExc" inputmode="decimal" placeholder="0,00"></div>
+          <div class="campo lc-sokm"><label for="lcKmLim">Limite de KM por mês <span class="opc">(em branco = livre)</span></label><input id="lcKmLim" inputmode="numeric"></div>
+          <div class="campo lc-sokm"><label for="lcKmExc">Valor do KM excedente (R$)</label><input id="lcKmExc" inputmode="decimal" placeholder="0,00"></div>
           <div class="campo"><label for="lcMulta">Multa por atraso no pagamento (%)</label><input id="lcMulta" inputmode="decimal" value="2"></div>
           <div class="campo"><label for="lcAviso">Aviso prévio pra sair (dias)</label><input id="lcAviso" inputmode="numeric" value="30"></div>
         </div>
@@ -157,7 +157,15 @@
     (d.check || []).forEach((v, i) => { const c = document.querySelector(`#lcCheck input[data-i="${i}"]`); if (c) c.checked = !!v; });
     $("#lcConfirma").checked = !!d.confirma;
   }
-  escreve(ls.get());
+  function formaCobranca(){
+    const p = $("#lcPer").value;
+    $("#lcValorLbl").textContent = p === "km" ? "Valor por KM rodado (R$)" : p === "dia" ? "Valor da diária (R$)" : `Valor do aluguel por ${p} (R$)`;
+    $("#lcVencLbl").textContent = p === "km" || p === "dia" ? "Quando paga (fechamento)" : "Vencimento";
+    $("#lcVenc").placeholder = p === "km" || p === "dia" ? "toda sexta-feira / na devolução" : "todo dia 10";
+    document.querySelectorAll(".lc-sokm").forEach(c => c.hidden = p === "km");   // por KM não tem limite nem excedente
+  }
+  $("#lcPer").addEventListener("change", formaCobranca);
+  escreve(ls.get()); formaCobranca();
   sec.addEventListener("input", () => ls.set(le()));
   sec.addEventListener("change", () => ls.set(le()));
   $("#lcCpf").addEventListener("input", e => e.target.value = maskCpf(e.target.value));
@@ -193,9 +201,13 @@
       <h4>CLÁUSULAS</h4>
       ${cl(`<b>Objeto.</b> A LOCADORA dá em locação ao LOCATÁRIO o veículo descrito acima${d.lcLugares ? `, com ${esc(d.lcLugares)} lugares` : ""}, em boas condições de uso, conservação e funcionamento, conforme o checklist de entrega que faz parte deste contrato.`)}
       ${cl(`<b>Prazo.</b> A locação vale ${prazo}. Qualquer das partes pode encerrá-la avisando a outra por escrito (WhatsApp vale) com ${linha(d.lcAviso || "30", 30)} dias de antecedência, sem multa, ressalvadas as hipóteses de rescisão imediata deste contrato.`)}
-      ${cl(`<b>Valor e pagamento.</b> O LOCATÁRIO pagará à LOCADORA o aluguel de ${linha(din(d.lcValor), 90)} por ${esc(d.lcPer || "mês")}, com vencimento ${linha(d.lcVenc, 110)}, por Pix ou outra forma combinada por escrito. O atraso gera multa de ${linha(d.lcMulta || "2", 25)}% sobre o valor em atraso, juros de 1% ao mês e correção monetária, e, passados 10 (dez) dias de atraso, a LOCADORA pode encerrar a locação e retomar o veículo.`)}
+      ${cl(`<b>Valor e pagamento.</b> ${
+        d.lcPer === "km" ? `O LOCATÁRIO pagará à LOCADORA ${linha(din(d.lcValor), 90)} por quilômetro rodado. Os quilômetros são apurados pelo odômetro do veículo: a diferença entre o KM na entrega (ou no último fechamento) e o KM no fechamento seguinte ou na devolução. O pagamento será feito ${linha(d.lcVenc, 110)}, por Pix ou outra forma combinada por escrito. O LOCATÁRIO não pode mexer no odômetro; se ele parar ou for alterado, a LOCADORA cobra pela média diária de KM do período anterior, sem prejuízo das demais penalidades.`
+        : d.lcPer === "dia" ? `O LOCATÁRIO pagará à LOCADORA a diária de ${linha(din(d.lcValor), 90)}, contada por dia (ou fração de dia) em que o veículo ficar com o LOCATÁRIO, da retirada até a devolução. O pagamento será feito ${linha(d.lcVenc, 110)}, por Pix ou outra forma combinada por escrito.`
+        : `O LOCATÁRIO pagará à LOCADORA o aluguel de ${linha(din(d.lcValor), 90)} por ${esc(d.lcPer || "mês")}, com vencimento ${linha(d.lcVenc, 110)}, por Pix ou outra forma combinada por escrito.`
+      } O atraso gera multa de ${linha(d.lcMulta || "2", 25)}% sobre o valor em atraso, juros de 1% ao mês e correção monetária, e, passados 10 (dez) dias de atraso, a LOCADORA pode encerrar a locação e retomar o veículo.`)}
       ${num(d.lcCaucao) > 0 ? cl(`<b>Caução.</b> Na assinatura, o LOCATÁRIO entrega à LOCADORA a caução de ${linha(din(d.lcCaucao))}, que será devolvida em até 10 (dez) dias após a devolução do veículo, descontados aluguéis em aberto, multas, danos, combustível faltante e quaisquer despesas de responsabilidade do LOCATÁRIO.`) : ""}
-      ${num(d.lcKmLim) > 0 ? cl(`<b>Quilometragem.</b> A locação inclui até ${linha(d.lcKmLim, 50)} km por mês. O que passar disso será cobrado a ${linha(din(d.lcKmExc), 70)} por km excedente, junto com o aluguel seguinte.`) : ""}
+      ${d.lcPer !== "km" && num(d.lcKmLim) > 0 ? cl(`<b>Quilometragem.</b> A locação inclui até ${linha(d.lcKmLim, 50)} km por mês. O que passar disso será cobrado a ${linha(din(d.lcKmExc), 70)} por km excedente, junto com o aluguel seguinte.`) : ""}
       ${cl(`<b>Uso do veículo.</b> O veículo só pode ser dirigido pelo LOCATÁRIO, devidamente habilitado na categoria exigida para o veículo e para a atividade que exercer. É proibido: sublocar, emprestar ou ceder o veículo a terceiros; usá-lo em atividades ilícitas, competições ou para rebocar; transportar passageiros acima da lotação ou sem cinto; dirigir sob efeito de álcool ou drogas; e alterar as características do veículo (adesivos, equipamentos, bancos) sem autorização por escrito da LOCADORA.`)}
       <div class="ct-lic">${cl(`<b>VEÍCULO SEM LICENÇA – RESPONSABILIDADE TOTAL DO LOCATÁRIO.</b> O LOCATÁRIO declara estar ciente de que o veículo é entregue <b>SEM QUALQUER LICENÇA, AUTORIZAÇÃO, ALVARÁ, VISTORIA OU CADASTRO</b> para transporte escolar, fretamento ou qualquer transporte remunerado de passageiros, junto a qualquer órgão (prefeitura, DETRAN, ARTESP, DER ou outro). Caso queira usá-lo nessas atividades, cabe <b>exclusivamente ao LOCATÁRIO</b>, por sua conta e antes de qualquer uso, obter e manter todas as licenças e autorizações exigidas. <b>Se, por qualquer motivo, o veículo for parado, multado, retido, removido ou APREENDIDO por transporte irregular ou por qualquer outra infração cometida durante a locação, a responsabilidade será TOTAL e EXCLUSIVA do LOCATÁRIO</b>, que pagará, em até 5 (cinco) dias do aviso, todas as multas, taxas, guincho, diárias de pátio, despesas de liberação e honorários, além do aluguel de todo o período em que o veículo ficar parado, e responderá sozinho perante as autoridades, os passageiros, seus responsáveis e quaisquer terceiros, isentando a LOCADORA de qualquer responsabilidade.`)}</div>
       ${cl(`<b>Multas e pontos.</b> As infrações de trânsito cometidas durante a locação são de responsabilidade do LOCATÁRIO, que pagará as multas e aceitará ser indicado como condutor infrator, assinando o que for preciso para a transferência dos pontos. Multas pagas pela LOCADORA serão reembolsadas pelo LOCATÁRIO em até 5 (cinco) dias do aviso.`)}
@@ -212,6 +224,7 @@
       <div class="ct-checklist">${CHECKLIST.map((t, i) => `<span>(${ok[i] ? "X" : "&nbsp;&nbsp;"}) ${esc(t)}</span>`).join("")}</div>
       <p><b>Avarias e observações:</b> ${d.lcAvarias ? esc(d.lcAvarias) : "nenhuma anotada."}</p>
       <p>${d.confirma ? "☑" : "☐"} <b>O LOCATÁRIO conferiu o veículo junto com a LOCADORA e confirma o checklist acima.</b> KM na entrega: ${linha(d.lcKm, 70)} · Combustível: ${linha(d.lcComb, 60)}</p>
+      ${d.lcPer === "km" ? `<p>KM na devolução: ${linha("", 90)} · KM rodados: ${linha("", 80)} · Total a pagar: ${linha("", 90)}</p>` : ""}
 
       <p>Sumaré, ${d.lcRetira ? dataExt(d.lcRetira) : `<span class="branco" style="min-width:160px">&nbsp;</span>`}.</p>
       <div class="ct-ass${ass ? " assinado" : ""}">
@@ -227,7 +240,7 @@
     if (d.lcCpf.replace(/\D/g, "").length !== 11) falta.push("CPF");
     if (d.lcTel.replace(/\D/g, "").length < 10) falta.push("celular");
     if (!d.lcInicio) falta.push("início da locação");
-    if (!(num(d.lcValor) > 0)) falta.push("valor do aluguel");
+    if (!(num(d.lcValor) > 0)) falta.push(d.lcPer === "km" ? "valor do KM" : d.lcPer === "dia" ? "valor da diária" : "valor do aluguel");
     if (!d.confirma) falta.push("confirmação do checklist");
     return falta;
   }
