@@ -296,7 +296,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
   /* ---------- validação ---------- */
   let dados = null;
   const marca = (el, ok) => { el.closest(".campo")?.classList.toggle("err", !ok); return ok; };
-  $("#e2").addEventListener("submit", ev=>{
+  $("#e2").addEventListener("submit", async ev=>{
     ev.preventDefault();
     let ok = true, primeiro = null, motivo = "Preencha os campos destacados.";
     const req = (el, c) => { if (!marca(el, c)){ ok=false; primeiro = primeiro || el; } };
@@ -309,7 +309,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
     req($("#rCep"), $("#rCep").value.replace(/\D/g,"").length===8);
     req($("#rCidade"), !!$("#rCidade").value.trim());
     atualizaPreco();
-    const mens = DT.num($("#rValor").value); req($("#rValor"), mens >= 50 && mens <= 20000);
+    let mens = DT.num($("#rValor").value); req($("#rValor"), mens >= 50 && mens <= 20000);
     if (!(mens >= 50 && mens <= 20000) && $("#rValor").value) motivo = "Confira o valor da mensalidade.";
     const alunos = [];
     document.querySelectorAll("#alunos .aluno").forEach(c=>{
@@ -329,6 +329,13 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
       rua:$("#rEnd").value.trim(), bairro:$("#rBairro").value.trim(), cidade:$("#rCidade").value.trim(), cep:$("#rCep").value,
       alunos, obs:$("#obs").value.trim(), dataCadastro:hojeISO()
     };
+    // preço combinado com a Danni's (cadastrado no admin): vale no lugar da tabela
+    const btE2 = $("#e2 button[type=submit]"), txtE2 = btE2.textContent; btE2.disabled = true; btE2.textContent = "Conferindo…";
+    try{
+      const r = await Promise.race([api("preco_combinado", {cpf: dados.cpf, alunos: alunos.map(a => a.nome), responsavel: dados.responsavel}), new Promise(ok => setTimeout(() => ok(null), 7000))]);
+      if (r && Number(r.valor) >= 50){ mens = Number(r.valor); dados.precoCombinado = true; }
+    }catch(e){}
+    btE2.disabled = false; btE2.textContent = txtE2;
     const vg = DT.vigencia(dados.dataCadastro);
     dados.valores = {ini:vg.ini, mensalidade:mens, parcelas:vg.meses, total:Math.round(mens*vg.meses*100)/100, dataContrato:hojeISO()};
     resumo(); $("#contratoLer").innerHTML = contratoHTML(dados, dados.valores); $("#contratoLer").scrollTop = 0;
@@ -343,7 +350,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
     if (dados.email) L.push(["E-mail", dados.email]);
     L.push(["Endereço", `${dados.rua} – ${dados.bairro} – ${dados.cidade} – CEP ${dados.cep}`]);
     dados.alunos.forEach((a,i)=>L.push([dados.alunos.length>1?`Aluno ${i+1}`:"Aluno", `${a.nome} · nasc. ${fmtData(a.nasc)}\n${a.escola} · ${a.periodo} · ${a.trajeto}`]));
-    L.push(["Valor", `R$ ${DT.brl(dados.valores.mensalidade)} por mês · ${dados.valores.parcelas} parcelas (${DT.vigencia(dados.dataCadastro).de} a ${DT.vigencia(dados.dataCadastro).ate}) · total R$ ${DT.brl(dados.valores.total)}`]);
+    L.push(["Valor", `${dados.precoCombinado ? "💲 Valor combinado com a Danni's Tur: " : ""}R$ ${DT.brl(dados.valores.mensalidade)} por mês · ${dados.valores.parcelas} parcelas (${DT.vigencia(dados.dataCadastro).de} a ${DT.vigencia(dados.dataCadastro).ate}) · total R$ ${DT.brl(dados.valores.total)}`]);
     if (dados.obs) L.push(["Observações", dados.obs]);
     $("#resumo").innerHTML = L.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v).replace(/\n/g,"<br>")}</dd></div>`).join("");
   }

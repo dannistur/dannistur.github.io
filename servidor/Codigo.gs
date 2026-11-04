@@ -45,6 +45,8 @@ function doPost(e){
       case "admin_cinema_cancelar": admin_(req); return json_(cineMarca_(req, "cancelado"));
       case "admin_van":        admin_(req); return json_(defineVan_(req));
       case "admin_custos":     admin_(req); return json_(salvaCustos_(req));
+      case "preco_combinado":  return json_(precoCombinadoPublico_(req));
+      case "admin_precos":     admin_(req); return json_(salvaPrecos_(req));
       case "admin_teste_zap":  admin_(req); return json_({ok:true, enviado: avisaDono_("✅ Teste: os avisos da Danni's Tur estão chegando no seu WhatsApp.")});
       default:                 return json_({ok:false, erro:"Ação desconhecida"});
     }
@@ -86,7 +88,11 @@ function cadastrar_(d){
       Object.assign(linha, registroAceite_(linha, d.aparelho));
     }
     sh.appendRow(COLS.map(c => linha[c] == null ? "" : linha[c]));
-    avisaDono_(`${linha.tipo === "novo" ? "🆕 *Contrato novo 2027*" : "🚐 *Nova renovação 2027*"} (nº ${id})\n${linha.responsavel} – ${linha.celular}\n${temValor ? `💰 R$ ${brl_(linha.mensalidade)}/mês × ${linha.parcelas} = R$ ${brl_(linha.total)}\n` : "💰 Sem valor – colocar no admin\n"}${alunos.map(a=>`• ${a.nome} – ${a.escola}`).join("\n")}\n${linha.obs ? `📝 *Observação:* ${linha.obs}\n` : ""}\n${linha.aceite_em ? "✅ A família já aceitou o contrato no app." : "⏳ A família ainda não aceitou o contrato."}\n👉 Conferir o valor e tocar no botão verde pra mandar a via final no WhatsApp:\n${SITE}admin.html#f=${id}`);
+    const comb = precoCombinado_(linha.cpf, alunos.map(a => a.nome), linha.responsavel);
+    const avisoComb = !comb ? "" : (temValor && Math.abs(Number(linha.mensalidade) - comb.valor) < 0.01
+      ? `💲 Preço combinado aplicado (${comb.nome})\n`
+      : `⚠️ *Preço combinado de R$ ${brl_(comb.valor)}* (${comb.nome}), mas o contrato saiu com outro valor: ajuste no admin\n`);
+    avisaDono_(`${linha.tipo === "novo" ? "🆕 *Contrato novo 2027*" : "🚐 *Nova renovação 2027*"} (nº ${id})\n${linha.responsavel} – ${linha.celular}\n${temValor ? `💰 R$ ${brl_(linha.mensalidade)}/mês × ${linha.parcelas} = R$ ${brl_(linha.total)}\n` : "💰 Sem valor – colocar no admin\n"}${avisoComb}${alunos.map(a=>`• ${a.nome} – ${a.escola}`).join("\n")}\n${linha.obs ? `📝 *Observação:* ${linha.obs}\n` : ""}\n${linha.aceite_em ? "✅ A família já aceitou o contrato no app." : "⏳ A família ainda não aceitou o contrato."}\n👉 Conferir o valor e tocar no botão verde pra mandar a via final no WhatsApp:\n${SITE}admin.html#f=${id}`);
     return {ok:true, token, id, aceite: linha.aceite_em ? {em: linha.aceite_em, codigo: codigoIntegridade_(linha.aceite_hash)} : null};
   } finally { lock.releaseLock(); }
 }
@@ -209,11 +215,43 @@ function admin_(req){
   if (String(req.senha||"") !== senha){ Utilities.sleep(1200); throw erro_("Senha errada.", "senha"); }
 }
 
+/* ===================== preços combinados =====================
+   A Danni's cadastra no admin: nome (aluno ou responsável), CPF do responsável (opcional) e a mensalidade combinada.
+   Quando a família preenche a renovação/matrícula, o app reconhece e usa esse valor no lugar da tabela. */
+function semAcento_(t){ return String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim(); }
+function precos_(){ try { const l = JSON.parse(cfg_("precos_combinados") || "[]"); return Array.isArray(l) ? l : []; } catch(e){ return []; } }
+function precoCombinado_(cpf, nomesAlunos, responsavel){
+  const c = String(cpf || "").replace(/\D/g, "");
+  const nomes = [responsavel].concat(nomesAlunos || []).map(semAcento_).filter(Boolean);
+  let achou = null;
+  precos_().forEach(p => {
+    const pc = String(p.cpf || "").replace(/\D/g, "");
+    if (pc.length === 11){ if (pc === c) achou = p; return; }          // com CPF: só vale o CPF
+    const t = semAcento_(p.nome).split(" ").filter(w => w.length > 1);
+    if (t.length < 2) return;                                            // nome sozinho ("Ana") não serve
+    if (nomes.some(n => { const w = " " + n + " "; return t.every(x => w.indexOf(" " + x + " ") >= 0); })) achou = p;
+  });
+  return achou && Number(achou.valor) > 0 ? {nome: String(achou.nome), valor: Number(achou.valor)} : null;
+}
+function precoCombinadoPublico_(req){
+  const cpf = String(req.cpf || "").replace(/\D/g, "");
+  if (cpf.length !== 11) return {ok:true};
+  const p = precoCombinado_(cpf, (req.alunos || []).slice(0, 8).map(String), String(req.responsavel || ""));
+  return p ? {ok:true, valor: p.valor} : {ok:true};
+}
+function salvaPrecos_(req){
+  const l = (Array.isArray(req.precos) ? req.precos : []).slice(0, 300).map(p => ({
+    nome: limpa_(p.nome, 100), cpf: String(p.cpf || "").replace(/\D/g, "").slice(0, 11), valor: Math.round(Number(p.valor) * 100) / 100, obs: limpa_(p.obs, 120)
+  })).filter(p => p.nome && p.valor >= 50 && p.valor <= 20000);
+  setCfg_("precos_combinados", JSON.stringify(l));
+  return {ok:true, precos: l};
+}
+
 function lista_(){
   const sh = aba_(), vals = sh.getDataRange().getValues(); vals.shift();
   const familias = vals.filter(l => l[0] !== "").map(l => completo_(obj_(l)));
   let custosVans = {}; try { custosVans = JSON.parse(cfg_("custos_vans") || "{}"); } catch(e){}
-  return {ok:true, familias, hoje: hoje_(), assinaturaDannis: cfg_("assinatura_dannis"), custosVans};
+  return {ok:true, precosCombinados: precos_(), familias, hoje: hoje_(), assinaturaDannis: cfg_("assinatura_dannis"), custosVans};
 }
 
 /* vans: em qual van (tio/tia) cada aluno vai. Fica na coluna vans_json, um item por aluno, na mesma ordem dos alunos */
