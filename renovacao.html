@@ -350,7 +350,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
     if (dados.email) L.push(["E-mail", dados.email]);
     L.push(["Endereço", `${dados.rua} – ${dados.bairro} – ${dados.cidade} – CEP ${dados.cep}`]);
     dados.alunos.forEach((a,i)=>L.push([dados.alunos.length>1?`Aluno ${i+1}`:"Aluno", `${a.nome} · nasc. ${fmtData(a.nasc)}\n${a.escola} · ${a.periodo} · ${a.trajeto}`]));
-    L.push(["Valor", `${dados.precoCombinado ? "💲 Valor combinado com a Danni's Tur: " : ""}R$ ${DT.brl(dados.valores.mensalidade)} por mês · ${dados.valores.parcelas} parcelas (${DT.vigencia(dados.dataCadastro).de} a ${DT.vigencia(dados.dataCadastro).ate}) · total R$ ${DT.brl(dados.valores.total)}`]);
+    L.push(["Valor", `R$ ${DT.brl(dados.valores.mensalidade)} por mês · ${dados.valores.parcelas} parcelas (${DT.vigencia(dados.dataCadastro).de} a ${DT.vigencia(dados.dataCadastro).ate}) · total R$ ${DT.brl(dados.valores.total)}`]);
     if (dados.obs) L.push(["Observações", dados.obs]);
     $("#resumo").innerHTML = L.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v).replace(/\n/g,"<br>")}</dd></div>`).join("");
   }
