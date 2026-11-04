@@ -164,7 +164,7 @@
       <p class="ct-cl"><b>Cláusula 11.</b> Os meses de férias serão cobrados integralmente conforme as parcelas, independentemente do mês contratado (não trabalhamos em clube de férias).</p>
       <p class="ct-cl"><b>Cláusula 12.</b> Falta do aluno por doenças, viagens, passeios ou motivos particulares não gera desconto na mensalidade, pois a vaga permanecerá reservada e o transporte rodando normalmente.</p>
       <p class="ct-cl"><b>Cláusula 13.</b> As partes admitem como válida, nos termos do <span style="white-space:nowrap">art. 10, §2º,</span> da <span style="white-space:nowrap">Medida Provisória nº 2.200-2/2001</span>, a contratação por aceite eletrônico no aplicativo da Danni's Tur, com identificação do CONTRATANTE por CPF e data de nascimento do aluno e registro de data, hora e aparelho utilizado.</p>
-      ${String(f.obs||"").trim() ? `<div class="ct-obs"><b>OBSERVAÇÕES INFORMADAS PELO CONTRATANTE NO CADASTRO</b><p>${esc(String(f.obs).trim()).replace(/\n/g,"<br>")}</p></div>` : ""}
+      ${String(f.obs||"").trim() ? `<div class="ct-obs"><b>${f.origem === "adm" ? "CONDIÇÕES ESPECIAIS DESTE CONTRATO" : "OBSERVAÇÕES INFORMADAS PELO CONTRATANTE NO CADASTRO"}</b><p>${esc(String(f.obs).trim()).replace(/\n/g,"<br>")}</p></div>` : ""}
       <p class="ct-cl"><b>Cláusula 14.</b> Fica eleito o foro da Comarca de Sumaré, com prevalência sobre qualquer outro, por mais privilegiado que seja, para dirimir todas as dúvidas que possam advir de qualquer cláusula deste contrato. E, por estarem assim justos e contratados e de pleno acordo com todas as cláusulas estipuladas, assinam o presente instrumento particular em duas vias de igual teor e forma e sem rasura.</p>
       <p>${dataExtenso(x.dataContrato)}</p>
       <p><b>Ciente e de acordo,</b></p>

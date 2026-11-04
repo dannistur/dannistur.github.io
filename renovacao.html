@@ -110,7 +110,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
         <fieldset>
           <legend>Mensalidade</legend>
           <div class="preco-tab" id="precoTab" hidden>
-            <span>Mensalidade Danni's Tur 2027:</span>
+            <span>Pela tabela da Danni's Tur 2027:</span>
             <b class="v" id="precoV"></b>
             <small class="dica" id="precoConta"></small>
           </div>
@@ -182,7 +182,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
 
 <div id="printArea"><p style="font:16px Arial;padding:40px;text-align:center">O contrato só pode ser impresso depois que a Danni's Tur liberar, pelo link do seu contrato.</p></div>
 
-<script src="comum.js?v=15"></script>
+<script src="comum.js?v=16"></script>
 <script>
 (function(){
   const $ = s => document.querySelector(s);
@@ -309,7 +309,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
     req($("#rCep"), $("#rCep").value.replace(/\D/g,"").length===8);
     req($("#rCidade"), !!$("#rCidade").value.trim());
     atualizaPreco();
-    let mens = DT.num($("#rValor").value); req($("#rValor"), mens >= 50 && mens <= 20000);
+    const mens = DT.num($("#rValor").value); req($("#rValor"), mens >= 50 && mens <= 20000);
     if (!(mens >= 50 && mens <= 20000) && $("#rValor").value) motivo = "Confira o valor da mensalidade.";
     const alunos = [];
     document.querySelectorAll("#alunos .aluno").forEach(c=>{
@@ -329,13 +329,13 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
       rua:$("#rEnd").value.trim(), bairro:$("#rBairro").value.trim(), cidade:$("#rCidade").value.trim(), cep:$("#rCep").value,
       alunos, obs:$("#obs").value.trim(), dataCadastro:hojeISO()
     };
-    // preço combinado com a Danni's (cadastrado no admin): vale no lugar da tabela
-    const btE2 = $("#e2 button[type=submit]"), txtE2 = btE2.textContent; btE2.disabled = true; btE2.textContent = "Conferindo…";
-    try{
-      const r = await Promise.race([api("preco_combinado", {cpf: dados.cpf, alunos: alunos.map(a => a.nome), responsavel: dados.responsavel}), new Promise(ok => setTimeout(() => ok(null), 7000))]);
-      if (r && Number(r.valor) >= 50){ mens = Number(r.valor); dados.precoCombinado = true; }
-    }catch(e){}
-    btE2.disabled = false; btE2.textContent = txtE2;
+    if (API){
+      const btE2 = $("#e2 button[type=submit]"), txtE2 = btE2.textContent; btE2.disabled = true; btE2.textContent = "Conferindo…";
+      let existe = false;
+      try{ const r = await Promise.race([api("ja_tem", {cpf: dados.cpf}), new Promise(ok => setTimeout(() => ok(null), 7000))]); existe = !!(r && r.existe); }catch(e){}
+      btE2.disabled = false; btE2.textContent = txtE2;
+      if (existe){ avisoJaTem($("#e2Err")); return; }
+    }
     const vg = DT.vigencia(dados.dataCadastro);
     dados.valores = {ini:vg.ini, mensalidade:mens, parcelas:vg.meses, total:Math.round(mens*vg.meses*100)/100, dataContrato:hojeISO()};
     resumo(); $("#contratoLer").innerHTML = contratoHTML(dados, dados.valores); $("#contratoLer").scrollTop = 0;
@@ -368,44 +368,20 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
       return {escola: es.value==="outra" ? c.querySelector(".a-outra").value.trim() : (ESCOLAS.find(x=>x.id===es.value)||{}).nome, periodo: per?per.value:"", trajeto: tr?tr.value:"Ida e volta"};
     });
   }
-  /* preço da lista da Danni's (admin): procurado em silêncio pelo CPF/nomes; a família só vê "R$ X por mês" */
-  let comb = null, consultado = false, chaveComb = "", tComb = 0;
-  function chaveAtual(){ return [$("#rCpf").value.replace(/\D/g,""), $("#rNome").value.trim(), ...[...document.querySelectorAll("#alunos .a-nome")].map(i=>i.value.trim())].join("|"); }
-  function consultaComb(){
-    clearTimeout(tComb);
-    tComb = setTimeout(async ()=>{
-      if (!cpfValido($("#rCpf").value)) return;
-      const k = chaveAtual(); if (k === chaveComb) return; chaveComb = k;
-      let v = null;
-      try{
-        const r = await Promise.race([api("preco_combinado", {cpf: $("#rCpf").value, alunos: [...document.querySelectorAll("#alunos .a-nome")].map(i=>i.value.trim()).filter(Boolean), responsavel: $("#rNome").value.trim()}), new Promise(ok=>setTimeout(()=>ok(null), 7000))]);
-        if (r && Number(r.valor) >= 50) v = Number(r.valor);
-      }catch(e){}
-      if (k !== chaveAtual()) return;
-      comb = v; consultado = true; atualizaPreco();
-    }, 700);
-  }
-  ["#rCpf","#rNome"].forEach(q=>$(q).addEventListener("input", ()=>{ consultado = cpfValido($("#rCpf").value) && consultado; consultaComb(); atualizaPreco(); }));
-  $("#alunos").addEventListener("input", e=>{ if (e.target.classList.contains("a-nome")) consultaComb(); });
   function atualizaPreco(){
-    const tab = DT.precoTabela(alunosDoForm(), $("#rBairro").value), vg = DT.vigencia(hojeISO()), inp = $("#rValor");
-    const t = comb ? {valor: comb, conta: ""} : tab;
-    const espera = !!tab && !comb && !consultado;   // tem preço de tabela, mas ainda não sabemos quem é
-    $("#precoTab").hidden = !t; $("#valorLivre").hidden = !!t; $("#precoTopo").hidden = !t || espera;
-    if (t && !espera){ $("#precoTopoV").textContent = `R$ ${DT.brl(t.valor)} por mês`; $("#precoTopoC").textContent = t.conta; }
+    const t = DT.precoTabela(alunosDoForm(), $("#rBairro").value), vg = DT.vigencia(hojeISO()), inp = $("#rValor");
+    $("#precoTab").hidden = !t; $("#valorLivre").hidden = !!t; $("#precoTopo").hidden = !t;
+    if (t){ $("#precoTopoV").textContent = `R$ ${DT.brl(t.valor)} por mês`; $("#precoTopoC").textContent = t.conta; }
     if (t){
       inp.value = DT.brl(t.valor); inp.dataset.auto = "1"; marca(inp, true);
-      if (espera){ $("#precoV").textContent = "—"; $("#precoConta").textContent = "Preencha o CPF do responsável pra ver a mensalidade."; }
-      else {
-        $("#precoV").textContent = `R$ ${DT.brl(t.valor)} por mês`;
-        $("#precoConta").textContent = `${t.conta ? t.conta + " · " : ""}${vg.meses} parcelas (${vg.de} a ${vg.ate}) = total R$ ${DT.brl(t.valor*vg.meses)}`;
-      }
+      $("#precoV").textContent = `R$ ${DT.brl(t.valor)} por mês`;
+      $("#precoConta").textContent = `${t.conta} · ${vg.meses} parcelas (${vg.de} a ${vg.ate}) = total R$ ${DT.brl(t.valor*vg.meses)}`;
     } else if (inp.dataset.auto){ inp.value = ""; inp.dataset.auto = ""; inp.dispatchEvent(new Event("input")); }
   }
   $("#alunos").addEventListener("change", atualizaPreco);
   $("#rBairro").addEventListener("input", atualizaPreco);
   $("#alunos").addEventListener("input", e=>{ if (e.target.classList.contains("a-outra")) atualizaPreco(); });
-  new MutationObserver(()=>{ atualizaPreco(); consultaComb(); }).observe($("#alunos"), {childList:true});
+  new MutationObserver(atualizaPreco).observe($("#alunos"), {childList:true});
   atualizaPreco();
   const podeEnviar = () => $("#confirmar").disabled = !$("#aceite").checked;
   $("#aceite").onchange = podeEnviar;
@@ -423,6 +399,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
     if (dados.obs) m += `*Observações:* ${dados.obs}\n\n`;
     return m + TX.confirma;
   }
+  const avisoJaTem = el => { el.innerHTML = 'Esse CPF já tem contrato 2027 com a Danni\'s Tur. Pra ver ou aceitar, abra o <a href="contrato.html" style="color:inherit;font-weight:800">Meu contrato</a>. Precisa mudar alguma coisa? Fale com a Danni\'s no WhatsApp.'; el.scrollIntoView({behavior:"smooth", block:"center"}); };
   $("#confirmar").onclick = async ()=>{
     const b = $("#confirmar"); b.disabled = true; b.textContent = "Enviando…"; $("#e3Err").textContent = "";
     $("#linkContrato").hidden = true; $("#zap").hidden = true;
@@ -434,6 +411,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
         if (r.aceite){ const [d, h] = String(r.aceite.em).split("T"); $("#aceitoOk").innerHTML = `<span>✅ Aceito em ${fmtData(d)} às ${String(h||"").slice(0,5)}</span><span>Código de integridade: <span class="ct-codigo">${esc(r.aceite.codigo)}</span></span>`; $("#aceitoOk").hidden = false; }
         mostrar(4);
       }catch(e){
+        if (e.codigo === "ja_tem"){ avisoJaTem($("#e3Err")); b.textContent = "Já enviado"; return; }
         $("#e3Err").textContent = "Não consegui enviar agora. Confira a internet e toque de novo em enviar.";
       }
     } else {

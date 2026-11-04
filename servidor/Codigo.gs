@@ -12,7 +12,7 @@
 const ABA = "Renovações";
 const COLS = ["id","token","criado_em","status","responsavel","cpf","rg","celular","fone_casa","outro_fone","email",
               "rua","bairro","cidade","cep","alunos_texto","alunos_json","obs","data_cadastro",
-              "inicio_idx","mensalidade","parcelas","total","data_contrato","liberado_em","assinado_em","arquivo_url","observacao_interna","tipo","assinatura","assinatura_info","assinado_dannis_em","aceite_em","aceite_info","aceite_hash","aceite_valores","ajuste_info","vans_json"];
+              "inicio_idx","mensalidade","parcelas","total","data_contrato","liberado_em","assinado_em","arquivo_url","observacao_interna","tipo","assinatura","assinatura_info","assinado_dannis_em","aceite_em","aceite_info","aceite_hash","aceite_valores","ajuste_info","vans_json","origem"];
 const STATUS = {AGUARDANDO:"aguardando_valor", LIBERADO:"liberado", ASSINADO:"assinado_online", IMPRESSO:"vai_entregar_impresso", RECEBIDO:"recebido", CANCELADO:"cancelado"};
 const FUSO = "America/Sao_Paulo";
 const SITE = "https://dannistur.github.io/";
@@ -28,6 +28,7 @@ function doPost(e){
   try {
     switch (req.acao){
       case "cadastrar":        return json_(cadastrar_(req.dados));
+      case "ja_tem":           return json_({ok:true, existe: jaTem_(req.cpf)});
       case "buscar":           return json_(buscar_(req));
       case "ver":              return json_(ver_(req));
       case "aceitar":          return json_(aceitar_(req));
@@ -46,6 +47,8 @@ function doPost(e){
       case "admin_van":        admin_(req); return json_(defineVan_(req));
       case "admin_custos":     admin_(req); return json_(salvaCustos_(req));
       case "preco_combinado":  return json_(precoCombinadoPublico_(req));
+      case "admin_criar":      admin_(req); return json_(adminCriar_(req));
+      case "admin_editar":     admin_(req); return json_(adminEditar_(req));
       case "admin_precos":     admin_(req); return json_(salvaPrecos_(req));
       case "admin_teste_zap":  admin_(req); return json_({ok:true, enviado: avisaDono_("✅ Teste: os avisos da Danni's Tur estão chegando no seu WhatsApp.")});
       default:                 return json_({ok:false, erro:"Ação desconhecida"});
@@ -56,10 +59,19 @@ function doPost(e){
 }
 
 /* ===================== famílias ===================== */
+/* um contrato 2027 por CPF: quem já mandou (ou já tem contrato feito pela Danni's) não preenche de novo */
+const MSG_JA_TEM = "Esse CPF já tem contrato 2027 com a Danni's Tur. Pra ver ou aceitar, abra o Meu contrato. Precisa mudar alguma coisa? Fale com a Danni's no WhatsApp.";
+function jaTem_(cpf){
+  const c = String(cpf || "").replace(/\D/g, ""); if (c.length !== 11) return false;
+  const sh = aba_(), n = sh.getLastRow(); if (n < 2) return false;
+  const iCpf = COLS.indexOf("cpf"), iSt = COLS.indexOf("status");
+  return sh.getRange(2, 1, n - 1, COLS.length).getValues().some(r => String(r[iCpf]).replace(/\D/g, "") === c && r[iSt] !== STATUS.CANCELADO);
+}
 function cadastrar_(d){
   if (!d || !d.responsavel || !d.cpf || !Array.isArray(d.alunos) || !d.alunos.length) throw erro_("Dados incompletos");
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
+    if (jaTem_(d.cpf)) throw erro_(MSG_JA_TEM, "ja_tem");
     const sh = aba_();
     const id = proximoId_(sh);
     const token = novoCodigo_(sh);
@@ -351,6 +363,55 @@ function salvar_(req){
   } finally { lock.releaseLock(); }
 }
 
+/* ===================== contrato personalizado (feito pela Danni's no admin) ===================== */
+function camposFamilia_(d){
+  if (!d || String(d.responsavel||"").trim().split(/\s+/).length < 2) throw erro_("Coloque o nome completo do responsável.");
+  if (String(d.cpf||"").replace(/\D/g,"").length !== 11) throw erro_("Coloque o CPF do responsável (11 números).");
+  if (!Array.isArray(d.alunos) || !d.alunos.length) throw erro_("Coloque pelo menos um aluno.");
+  const alunos = d.alunos.slice(0,8).map(a => ({nome:limpa_(a.nome,80), nasc:limpa_(a.nasc,10), escola:limpa_(a.escola,60), periodo:limpa_(a.periodo,20), trajeto:limpa_(a.trajeto,20) || "Ida e volta"}));
+  if (alunos.some(a => !a.nome || !/^\d{4}-\d{2}-\d{2}$/.test(a.nasc))) throw erro_("Cada aluno precisa de nome e data de nascimento (a família entra no contrato com o CPF + a data de nascimento).");
+  return {
+    responsavel:limpa_(d.responsavel,100), cpf:limpa_(d.cpf,14), rg:limpa_(d.rg,20), celular:limpa_(d.celular,20),
+    fone_casa:limpa_(d.foneCasa,20), outro_fone:limpa_(d.outroFone,40), email:limpa_(d.email,80),
+    rua:limpa_(d.rua,120), bairro:limpa_(d.bairro,60), cidade:limpa_(d.cidade,60), cep:limpa_(d.cep,9),
+    alunos_texto: alunos.map(a => `${a.nome} (${fmt_(a.nasc)}) – ${a.escola} – ${a.periodo} – ${a.trajeto}`).join("\n"),
+    alunos_json: JSON.stringify(alunos), obs:limpa_(d.obs,1500), tipo: d.tipo === "novo" ? "novo" : "renovacao"
+  };
+}
+function valoresAdm_(v){
+  v = v || {}; const mens = Number(v.mensalidade), parc = Math.round(Number(v.parcelas)), ini = Math.round(Number(v.ini));
+  if (!(mens >= 1 && mens <= 50000 && parc >= 1 && parc <= 24 && ini > 24000)) throw erro_("Confira mensalidade, parcelas e início.");
+  const tot = Number(v.total) > 0 ? Math.round(Number(v.total) * 100) / 100 : Math.round(mens * parc * 100) / 100;
+  return {inicio_idx: ini, mensalidade: mens, parcelas: parc, total: tot, data_contrato: /^\d{4}-\d{2}-\d{2}$/.test(v.dataContrato||"") ? v.dataContrato : hoje_()};
+}
+function adminCriar_(req){
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const sh = aba_();
+    const linha = Object.assign({id: proximoId_(sh), token: novoCodigo_(sh), criado_em: agora_(), status: STATUS.AGUARDANDO, data_cadastro: hoje_(), origem: "adm"},
+                                camposFamilia_(req.dados), valoresAdm_(req.dados && req.dados.valores));
+    sh.appendRow(COLS.map(c => linha[c] == null ? "" : linha[c]));
+    return {ok:true, id: linha.id, familia: completo_(porId_(linha.id).obj)};
+  } finally { lock.releaseLock(); }
+}
+/* editar tudo de um contrato: se a família já tinha aceitado e algo mudou, o aceite cai e ela precisa aceitar de novo */
+function adminEditar_(req){
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const r = porId_(req.id); if (!r) throw erro_("Cadastro não encontrado.");
+    const mud = Object.assign(camposFamilia_(req.dados), valoresAdm_(req.dados && req.dados.valores));
+    const antes = r.obj, depois = Object.assign({}, antes, mud);
+    let caiu = false;
+    if (antes.aceite_em && hashContrato_(depois) !== antes.aceite_hash){
+      Object.assign(mud, {aceite_em:"", aceite_hash:"", aceite_valores:"", aceite_info:"", ajuste_info:""});
+      if (antes.status === STATUS.ASSINADO && !antes.arquivo_url && !antes.assinatura) mud.status = STATUS.LIBERADO;
+      caiu = true;
+    }
+    atualiza_(r.linha, mud);
+    return {ok:true, aceiteCaiu: caiu, familia: completo_(porId_(req.id).obj)};
+  } finally { lock.releaseLock(); }
+}
+
 function mudaStatus_(req){
   const r = porId_(req.id); if (!r) throw erro_("Cadastro não encontrado.");
   const ok = Object.keys(STATUS).map(k => STATUS[k]); if (ok.indexOf(req.status) < 0) throw erro_("Status inválido.");
@@ -562,7 +623,7 @@ function publico_(o){
     rua:o.rua, bairro:o.bairro, cidade:o.cidade, cep:o.cep, alunos, obs:o.obs, dataCadastro:String(o.data_cadastro||"").slice(0,10), tipo:o.tipo || "renovacao",
     assinatura:o.assinatura || "", assinadoEm:o.assinado_em || "",
     aceiteEm:o.aceite_em || "", aceiteInfo:o.aceite_info || "", aceiteCodigo: codigoIntegridade_(o.aceite_hash), aceiteValido: !!o.aceite_em,
-    aceiteOriginal: aceiteOriginal_(o), versaoCodigo: codigoIntegridade_(hashContrato_(o)), ajusteInfo: o.ajuste_info || "",
+    aceiteOriginal: aceiteOriginal_(o), versaoCodigo: codigoIntegridade_(hashContrato_(o)), ajusteInfo: o.ajuste_info || "", origem: o.origem || "",
     aceiteValores: (() => { try { return JSON.parse(o.aceite_valores || "null"); } catch(e){ return null; } })(),
     valores:{ini:o.inicio_idx, mensalidade:o.mensalidade, parcelas:o.parcelas, total:o.total, dataContrato:String(o.data_contrato||"").slice(0,10)}
   };
