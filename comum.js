@@ -33,14 +33,14 @@
 
   /* tabela de preços 2027 (mensalidade): ida e volta, só ida, só volta e 2 irmãos no mesmo horário (ida e volta).
      Escola sem preço aqui (FAM, outra escola) → a família digita o valor combinado. */
-  const P = (iv, uma, irmaos) => ({iv, ida: uma, volta: uma, irmaos});
+  const P = (iv, ida, irmaos, volta) => ({iv, ida, volta: volta == null ? ida : volta, irmaos});   // volta só quando for diferente da ida
   const PRECOS = {
-    educativa: P(250, 200, 460), network: P(250, 200, 460), proeducare: P(250, 200, 460),
+    educativa: P(250, 185, 460, 195), network: P(250, 185, 460, 195), proeducare: P(250, 185, 460, 195),
     alkimim: P(250, 200, 440), franceschini: P(250, 200, 440),
     candido: P(225, 185, 400),
     sabidinho: P(220, 185, 400), borboletinha: P(220, 185, 400), vito: P(220, 185, 400),
     crescendo: P(250, 200, 430), algodao: P(250, 200, 430), pio12: P(250, 200, 430),
-    sonho: P(230, 190, null)
+    sonho: P(230, 185, 400)
   };
   /* Faculdade FAM: o preço depende do bairro de embarque (ida e volta) */
   const BAIRROS_FAM = [
