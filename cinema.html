@@ -26,8 +26,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&family=Lobster&display=swap">
-<link rel="stylesheet" href="estilo.css?v=35">
+<link rel="stylesheet" href="estilo.css?v=36">
 <style>
+.esgota-carimbo{display:none}
+body.cine-esgotado .esgota-carimbo{display:block;position:absolute;z-index:6;left:50%;top:44%;transform:translate(-50%,-50%) rotate(-12deg);border:6px solid #fff;outline:4px solid #d61f2c;background:#d61f2c;color:#fff;font:italic 900 clamp(38px,11vw,64px)/1 Kanit,sans-serif;letter-spacing:.04em;padding:8px 26px 12px;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.45);pointer-events:none;white-space:nowrap}
+.esgotado{text-align:center;gap:12px;border:3px solid #d61f2c}
+.esgotado .tit{font:italic 900 44px/1 Kanit,sans-serif;color:#d61f2c;letter-spacing:.03em}
+.ultimas{margin:-6px 0 0;background:#fff1e6;color:#b4471a;border:2px solid #f4791f;border-radius:12px;padding:8px 12px;font-weight:800;text-align:center}
+
 body{margin:0}
 .cine{padding:8px 0 110px}
 .cine .wrap{display:grid;gap:18px}
@@ -111,6 +117,7 @@ body{margin:0}
   <div class="wrap">
 
     <section class="ingresso" aria-label="Convite">
+      <div class="esgota-carimbo" aria-hidden="true">ESGOTADO</div>
       <div class="letreiro" aria-label="Passeio da Van: Cinema, 28 de novembro, Cine Sumaré">
         <div class="marquise" id="marquise" aria-hidden="true"></div>
         <span class="script" aria-hidden="true">Passeio da Van</span>
@@ -137,9 +144,18 @@ body{margin:0}
       <details><summary>Até quando pagar?</summary><p>Até <b>20 de novembro</b>, pelo Pix desta página. Depois de pagar, mande o comprovante no nosso WhatsApp pra garantir a vaga.</p></details>
     </div>
 
+    <!-- esgotado -->
+    <section class="card esgotado" id="esgotado" hidden>
+      <p class="tit">ESGOTADO!</p>
+      <h2 style="font-size:22px">As vagas do cinema acabaram 🎬</h2>
+      <p>Lotamos a sala do Cine Sumaré com as crianças da van. Obrigado, famílias!<br>Quer entrar na lista de espera? Chama a gente no WhatsApp.</p>
+      <a class="btn btn-zap" id="zapEspera" href="#" target="_blank" rel="noopener">💬 Entrar na lista de espera</a>
+    </section>
+
     <!-- inscrição -->
     <form class="card" id="fCine" novalidate style="gap:18px">
       <h2 style="font-size:24px">Inscrever no passeio</h2>
+      <p class="ultimas" id="ultimas" hidden></p>
       <fieldset>
         <legend>Responsável</legend>
         <div class="grade">
@@ -240,6 +256,18 @@ body{margin:0}
   $("#addCrianca").onclick = () => addCrianca().querySelector(".k-nome").focus();
   $("#cCel").addEventListener("input", e => { if (/^[\d()\s-]*$/.test(e.target.value)) e.target.value = maskTel(e.target.value); });
 
+  /* ---------- vagas (sala com 78 lugares) ---------- */
+  let esgotado = false;
+  $("#zapEspera").href = zapLink(ZAP_DANNIS, "Olá! Vi que o cinema do dia 28/11 esgotou 😢 Quero colocar meu filho(a) na lista de espera.");
+  function fechaInscricao(){
+    esgotado = true; document.body.classList.add("cine-esgotado");
+    if ($("#pagar").hidden){ $("#fCine").hidden = true; $("#esgotado").hidden = false; }
+  }
+  api("cinema_vagas").then(v => {
+    if (v.esgotado) fechaInscricao();
+    else if (v.restam <= 10){ $("#ultimas").hidden = false; $("#ultimas").textContent = v.restam === 1 ? "🔥 Última vaga!" : `🔥 Últimas ${v.restam} vagas!`; }
+  }).catch(() => {});
+
   /* ---------- enviar ---------- */
   const marca = (el, ok) => { el.closest(".campo")?.classList.toggle("err", !ok); return ok; };
   $("#fCine").addEventListener("submit", async ev => {
@@ -264,7 +292,10 @@ body{margin:0}
       const r = await api("cinema_inscrever", {dados});
       const insc = {grupo: r.grupo, total: r.total, responsavel: dados.responsavel, criancas};
       guarda.set(insc); mostraPagar(insc);
-    } catch(e){ $("#cErr").textContent = e.message || "Não consegui enviar agora. Confira a internet e tente de novo."; }
+    } catch(e){
+      if (e.codigo === "esgotado"){ fechaInscricao(); $("#esgotado").scrollIntoView({behavior:"smooth", block:"center"}); }
+      $("#cErr").textContent = e.message || "Não consegui enviar agora. Confira a internet e tente de novo.";
+    }
     b.disabled = false; b.textContent = "Confirmar inscrição";
   });
   document.addEventListener("input", e => { if (e.target.closest("#fCine")) marca(e.target, true); });
@@ -295,7 +326,9 @@ body{margin:0}
     $("#copiado").textContent = aviso; setTimeout(() => { $("#copiado").textContent = ""; }, 5000);
   }
   $("#outra").onclick = () => {
-    guarda.apaga(); $("#pagar").hidden = true; $("#fCine").hidden = false;
+    guarda.apaga(); $("#pagar").hidden = true;
+    if (esgotado){ $("#esgotado").hidden = false; $("#esgotado").scrollIntoView({behavior:"smooth", block:"start"}); return; }
+    $("#fCine").hidden = false;
     $("#criancas").innerHTML = ""; n = 0; addCrianca(); $("#fCine").scrollIntoView({behavior:"smooth", block:"start"});
   };
   const salva = guarda.get(); if (salva && salva.grupo) mostraPagar(salva);   // voltou na página: mostra o Pix de novo

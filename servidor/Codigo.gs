@@ -41,6 +41,7 @@ function doPost(e){
       case "admin_minha_assinatura": admin_(req); return json_(minhaAssinatura_(req));
       case "admin_assinar_dannis": admin_(req); return json_(assinarDannis_(req));
       case "cinema_inscrever": return json_(cineInscrever_(req.dados));
+      case "cinema_vagas":     return json_(cineVagas_());
       case "admin_cinema":     admin_(req); return json_(cineLista_());
       case "admin_cinema_pago": admin_(req); return json_(cineMarca_(req, "pago"));
       case "admin_cinema_cancelar": admin_(req); return json_(cineMarca_(req, "cancelado"));
@@ -497,6 +498,17 @@ function zerarTestes(){
 const CINE_ABA = "Cinema 28-11";
 const CINE_COLS = ["id","grupo","criado_em","responsavel","celular","crianca","escola","periodo","tio","valor","pago","pago_em","cancelado"];
 const CINE_VALOR = 40;
+const CINE_LIMITE = 78;   // lugares na sala: ao chegar aqui, a inscrição fecha e o site mostra ESGOTADO
+/* conta as crianças inscritas que não foram canceladas */
+function cineOcupadas_(vals){
+  const ci = CINE_COLS.indexOf("cancelado");
+  return vals.slice(1).filter(r => r[0] !== "" && !r[ci]).length;
+}
+function cineVagas_(){
+  const sh = planilha_().getSheetByName(CINE_ABA);
+  const ocupadas = sh ? cineOcupadas_(sh.getDataRange().getValues()) : 0, restam = Math.max(0, CINE_LIMITE - ocupadas);
+  return {ok: true, limite: CINE_LIMITE, inscritos: ocupadas, restam, esgotado: restam <= 0};
+}
 const TIOS = ["Tio Daniel","Tia Joyce","Tio Luiz","Tia Cintia"];
 function cineAba_(){
   const ss = planilha_(); let sh = ss.getSheetByName(CINE_ABA);
@@ -522,6 +534,9 @@ function cineInscrever_(d){
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     const sh = cineAba_(), vals = sh.getDataRange().getValues();
+    const restam = CINE_LIMITE - cineOcupadas_(vals);
+    if (restam <= 0) throw erro_("ESGOTADO! As vagas do cinema acabaram. Fale com a Danni's Tur no WhatsApp pra entrar na lista de espera.", "esgotado");
+    if (kids.length > restam) throw erro_(`Só ${restam === 1 ? "resta 1 vaga" : "restam " + restam + " vagas"} no cinema. Inscreva no máximo ${restam} ${restam === 1 ? "criança" : "crianças"}.`, "poucas_vagas");
     let id = 0; for (let i = 1; i < vals.length; i++) id = Math.max(id, Number(vals[i][0]) || 0);
     const grupo = "C" + (id + 1), agora = agora_();
     kids.forEach((c, i) => sh.appendRow(CINE_COLS.map(col => ({id: id + 1 + i, grupo, criado_em: agora, responsavel: resp, celular: cel, crianca: c.nome, escola: c.escola, periodo: c.periodo, tio: c.tio, valor: CINE_VALOR, pago: "", pago_em: "", cancelado: ""})[col])));

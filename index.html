@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=35">
+<link rel="stylesheet" href="estilo.css?v=36">
 <style>body{margin:0} main.inicio{padding-block:24px 40px} main.inicio > .wrap{display:grid;gap:26px}</style>
 </head>
 <body>
@@ -44,6 +44,7 @@
     <div class="inicio-acoes">
       <a class="cine-capa" href="cinema.html" aria-label="Passeio da van: cinema dia 28 de novembro no Cine Sumaré, a van leva e busca. Clique pra inscrever">
         <img src="img/cinema-capa.jpg?v=1" alt="" width="1200" height="630">
+        <span class="cine-esg-selo" aria-hidden="true">ESGOTADO</span>
         <span class="cine-cta">🎟️ Clique aqui pra inscrever</span>
       </a>
       <div class="acao quad renov breve" aria-disabled="true"><span class="selo-breve">EM BREVE</span>
@@ -131,6 +132,13 @@
 
 <script src="comum.js?v=17"></script>
 <script>
+/* cinema: quando a sala lotar (78), a capa vira ESGOTADO */
+DT.api("cinema_vagas").then(v => {
+  if (!v.esgotado) return;
+  const c = document.querySelector(".cine-capa"); if (!c) return;
+  c.classList.add("esgotado"); c.querySelector(".cine-cta").textContent = "🎬 ESGOTADO! Clique pra lista de espera";
+}).catch(() => {});
+
 (function(){
   const $ = s => document.querySelector(s);
   const {ESCOLAS, esc} = DT;
