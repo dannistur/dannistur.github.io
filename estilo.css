@@ -181,6 +181,7 @@ dialog#dlg::backdrop{background:rgba(31,26,33,.6)}
 .contrato h4{margin:6px 0 0;text-align:center;font-size:15px;letter-spacing:.08em}
 .contrato p{margin:0;text-align:justify}
 .ct-cl b{color:var(--roxo)}
+.ct-par{padding-left:16px}
 .branco{display:inline-block;min-width:90px;border-bottom:1px solid #111;text-align:center;font-weight:700}
 .preenchido{font-weight:700}
 .ct-ass{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:26px;text-align:center;font-size:12px}
