@@ -84,6 +84,10 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 .cine-van h4 small{font-family:var(--f-corpo);font-size:13px;color:var(--tinta-2);font-weight:600}
 .cine-item{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;border:1px solid var(--linha);border-radius:12px;padding:8px 10px;font-size:14px}
 .cine-item.pago{background:#eaf7ef;border-color:#9fd6b4}
+.cine-busca input{font-size:16px}
+.cine-achou{margin:0;font-weight:800;font-size:15px;padding:8px 12px;border-radius:10px;background:#eaf7ef;color:#1b6b3a}
+.cine-achou.nao{background:#fdecec;color:#a3222b}
+.cine-item mark{background:#ffe27a;color:inherit;border-radius:3px;padding:0 1px}
 .cine-item small{color:var(--tinta-2)}
 .cine-item .acoes-c{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .bt-pago{border:2px solid var(--ok);background:#fff;color:var(--ok);border-radius:999px;padding:4px 12px;font:inherit;font-weight:700;cursor:pointer}
@@ -173,6 +177,10 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
         <button class="btn btn-sec" type="button" id="cineCopiar">Copiar lista por van</button>
         <a class="btn btn-link" href="cinema.html" target="_blank" rel="noopener">Abrir a página do passeio</a>
       </div>
+      <div class="busca cine-busca">
+        <input type="search" id="cineBusca" placeholder="🔎 Pesquisar criança, pai/mãe ou telefone" autocomplete="off">
+      </div>
+      <p class="cine-achou" id="cineAchou" hidden></p>
       <p class="ok-msg" id="cineMsg" role="status"></p>
       <div id="cineLista"></div>
     </details>
@@ -497,20 +505,47 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     try { const r = await api("admin_cinema", {senha}); cine = r.lista || []; cineTios = r.tios || cineTios; desenhaCinema(); }
     catch(e){ $("#cineResumo").textContent = "não consegui carregar"; }
   }
+  /* pesquisa: ignora acento e maiúscula; telefone pelos números */
+  const semAcento = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  function cineBate(c, q){
+    if (!q) return true;
+    const dig = q.replace(/\D/g, "");
+    if (dig.length >= 4 && String(c.celular || "").replace(/\D/g, "").includes(dig)) return true;
+    const alvo = semAcento(`${c.crianca} ${c.responsavel}`);
+    return semAcento(q).split(/\s+/).filter(Boolean).every(p => alvo.includes(p));
+  }
+  function marcaBusca(txt, q){
+    const t = esc(txt); if (!q || /\d/.test(q)) return t;
+    const partes = semAcento(q).split(/\s+/).filter(p => p.length > 1); if (!partes.length) return t;
+    const base = semAcento(t); let out = "", i = 0;
+    while (i < t.length){
+      const p = partes.find(p => base.startsWith(p, i));
+      if (p){ out += `<mark>${t.slice(i, i + p.length)}</mark>`; i += p.length; } else out += t[i++];
+    }
+    return out;
+  }
   function desenhaCinema(){
-    const pagos = cine.filter(c => c.pago), so = $("#cineSoPagos").checked;
+    const pagos = cine.filter(c => c.pago), so = $("#cineSoPagos").checked, q = $("#cineBusca").value.trim();
+    const achados = q ? cine.filter(c => cineBate(c, q)) : [];
+    $("#cineAchou").hidden = !q;
+    if (q){
+      $("#cineAchou").className = "cine-achou" + (achados.length ? "" : " nao");
+      $("#cineAchou").textContent = achados.length
+        ? `✅ ${achados.length === 1 ? "Achei 1 inscrição" : `Achei ${achados.length} inscrições`}: ${achados.map(c => `${c.crianca} (${c.tio}${c.pago ? ", pago" : ", falta pagar"})`).join(" · ")}`
+        : `❌ Ninguém com "${q}" inscrito no cinema.`;
+    }
     $("#cineResumo").textContent = cine.length ? `${cine.length} criança${cine.length > 1 ? "s" : ""} · ${pagos.length} pago${pagos.length !== 1 ? "s" : ""} · R$ ${brl(pagos.reduce((t, c) => t + Number(c.valor || 0), 0)) || "0,00"} recebido` : "ninguém inscrito ainda";
     const vans = [...cineTios, ...new Set(cine.map(c => c.tio).filter(t => !cineTios.includes(t)))];
     $("#cineLista").innerHTML = vans.map(t => {
-      const doTio = cine.filter(c => c.tio === t && (!so || c.pago));
+      const doTio = cine.filter(c => c.tio === t && (!so || c.pago) && cineBate(c, q));
       const todos = cine.filter(c => c.tio === t);
-      if (!todos.length) return "";
+      if (!todos.length || (q && !doTio.length)) return "";
       return `<div class="cine-van"><h4>${esc(t)} <small>${todos.length} criança${todos.length > 1 ? "s" : ""} · ${todos.filter(c => c.pago).length} pago${todos.filter(c => c.pago).length !== 1 ? "s" : ""}</small></h4>
         ${doTio.map(c => `<div class="cine-item${c.pago ? " pago" : ""}">
-          <span><b>${esc(c.crianca)}</b> · ${esc(c.escola)} ${esc(c.periodo)}<br><small>${esc(c.responsavel)} · ${esc(c.celular)} · ${esc(c.grupo)}</small></span>
+          <span><b>${marcaBusca(c.crianca, q)}</b> · ${esc(c.escola)} ${esc(c.periodo)}<br><small>${marcaBusca(c.responsavel, q)} · ${esc(c.celular)} · ${esc(c.grupo)}</small></span>
           <span class="acoes-c"><button type="button" class="bt-pago" data-g="${esc(c.grupo)}" data-v="${c.pago ? "" : "1"}">${c.pago ? "✅ Pago" : "Marcar pago"}</button>
           <button type="button" class="bt-x" data-id="${esc(c.id)}">tirar</button></span></div>`).join("") || `<small>Ninguém pago ainda nessa van.</small>`}</div>`;
-    }).join("") || `<div class="vazio">Quando alguém se inscrever no passeio, aparece aqui separado por van.</div>`;
+    }).join("") || (q ? "" : `<div class="vazio">Quando alguém se inscrever no passeio, aparece aqui separado por van.</div>`);
     $("#cineLista").querySelectorAll(".bt-pago").forEach(b => b.onclick = async () => {
       const irmaos = cine.filter(c => c.grupo === b.dataset.g).length;
       if (irmaos > 1 && !confirm(`Essa inscrição (${b.dataset.g}) tem ${irmaos} crianças no mesmo Pix. ${b.dataset.v ? "Marcar todas como pagas?" : "Desmarcar todas?"}`)) return;
@@ -526,6 +561,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     });
   }
   $("#cineSoPagos").onchange = desenhaCinema;
+  $("#cineBusca").oninput = desenhaCinema;
   $("#cineCopiar").onclick = async () => {
     const so = $("#cineSoPagos").checked, vans = [...cineTios, ...new Set(cine.map(c => c.tio).filter(t => !cineTios.includes(t)))];
     const txt = `🎬 *CINEMA 28/11 – lista por van*${so ? " (só pagos)" : ""}\n` + vans.map(t => {
