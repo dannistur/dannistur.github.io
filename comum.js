@@ -37,7 +37,7 @@
   const PRECOS = {
     educativa: P(250, 185, 460, 195), network: P(250, 185, 460, 195), proeducare: P(250, 185, 460, 195),
     alkimim: P(250, 200, 440), franceschini: P(250, 200, 440),
-    candido: P(225, 185, 400),
+    candido: P(225, 185, 420),
     sabidinho: P(220, 185, 400), borboletinha: P(220, 185, 400), vito: P(220, 185, 400),
     crescendo: P(250, 200, 430), algodao: P(250, 200, 430), pio12: P(250, 200, 430),
     sonho: P(230, 185, 400)
