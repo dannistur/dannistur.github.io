@@ -43,6 +43,7 @@
     sonho: P(230, 185, 400)
   };
   /* Faculdade FAM: o preço depende do bairro de embarque (ida e volta) */
+  const FAM_VOLTA = 300;   // FAM só volta: mesmo valor pra qualquer bairro
   const BAIRROS_FAM = [
     {preco: 370, bairros: ["Centro", "Jardim Makarenko", "Vila Miranda", "Jardim Marquisolo", "Casarão", "Parque Franceschini", "Planalto do Sol", "Ravanhani", "Parque da Floresta"]},
     {preco: 360, bairros: ["João Paulo II", "Consteca", "Voughan", "Jardim das Palmeiras", "Santa Madalena", "João de Vasconcellos", "Vila Yolanda", "Zilda Natel", "Portal do Lago"]}
@@ -56,7 +57,7 @@
   function precoTabela(alunos, bairro){
     if (!alunos || !alunos.length) return null;
     const pf = precoFam(bairro);
-    const itens = alunos.map(a => ({a, pr: idEscola(a.escola) === "fam" ? (pf && a.trajeto === "Ida e volta" ? P(pf, null, null) : null) : PRECOS[idEscola(a.escola)]}));
+    const itens = alunos.map(a => ({a, pr: idEscola(a.escola) === "fam" ? (a.trajeto === "Só volta" ? P(null, null, null, FAM_VOLTA) : pf && a.trajeto === "Ida e volta" ? P(pf, null, null) : null) : PRECOS[idEscola(a.escola)]}));
     if (itens.some(i => !i.pr)) return null;
     const usados = new Set(), partes = [];
     let valor = 0;
