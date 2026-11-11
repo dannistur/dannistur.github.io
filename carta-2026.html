@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Obrigado por 2026 · Danni's Tur</title>
+<meta name="robots" content="noindex">
+<meta property="og:title" content="Obrigado por 2026 · Danni's Tur">
+<meta property="og:description" content="Uma palavra de gratidão a quem confiou em nós este ano. Vem com a gente!!!">
+<meta property="og:image" content="https://dannistur.github.io/img/carta-2026.jpg">
+<link rel="icon" href="icones/favicon-64.png">
+<style>
+  body{margin:0;background:#0b1a3f;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px 16px 28px}
+  img{width:100%;max-width:560px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.5);display:block}
+  .bts{display:grid;gap:10px;width:100%;max-width:560px}
+  button,a.bt{font:700 17px system-ui,sans-serif;border:0;border-radius:14px;padding:15px;text-align:center;text-decoration:none;cursor:pointer}
+  .zap{background:#1fa855;color:#fff}
+  .baixar{background:#e2be6e;color:#0b1a3f}
+  p{margin:0;font-size:14px;color:#c9d3ee;text-align:center;max-width:560px}
+</style>
+</head>
+<body>
+  <img src="img/carta-2026.jpg" alt="Carta Obrigado por 2026 da Danni's Tur">
+  <div class="bts">
+    <button class="zap" id="enviar" type="button">📲 Enviar a imagem pelo WhatsApp</button>
+    <a class="bt baixar" href="img/carta-2026.jpg" download="carta-dannis-tur-2026.jpg">⬇️ Baixar a imagem</a>
+  </div>
+  <p id="msg">No celular, o botão verde abre o compartilhar: escolha o WhatsApp e depois o contato ou grupo.</p>
+<script>
+  document.getElementById("enviar").onclick = async () => {
+    const msg = document.getElementById("msg");
+    try {
+      const blob = await (await fetch("img/carta-2026.jpg")).blob();
+      const file = new File([blob], "carta-dannis-tur-2026.jpg", {type: "image/jpeg"});
+      if (navigator.canShare && navigator.canShare({files: [file]})) {
+        await navigator.share({files: [file], text: "Obrigado por 2026! Vem com a gente!!! 💛🚐"});
+        return;
+      }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    msg.textContent = "Esse aparelho não deixa enviar a imagem direto. Toque em “Baixar a imagem” e anexe no WhatsApp pela galeria.";
+  };
+</script>
+</body>
+</html>
