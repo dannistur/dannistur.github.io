@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Feliz Natal · Danni's Tur</title>
+<meta name="robots" content="noindex">
+<meta property="og:title" content="Feliz Natal · Danni's Tur">
+<meta property="og:description" content="Boas festas! Vem com a gente!!!">
+<meta property="og:image" content="https://dannistur.github.io/midia/feliz-natal-capa.jpg">
+<link rel="icon" href="icones/favicon-64.png">
+<style>
+  body{margin:0;background:#0b1a3f;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px 16px 28px}
+  video{width:100%;max-width:420px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);display:block;background:#000}
+  .bts{display:grid;gap:10px;width:100%;max-width:420px}
+  button,a.bt{font:700 17px system-ui,sans-serif;border:0;border-radius:14px;padding:15px;text-align:center;text-decoration:none;cursor:pointer}
+  .zap{background:#1fa855;color:#fff}
+  .baixar{background:#e2be6e;color:#0b1a3f}
+  p{margin:0;font-size:14px;color:#c9d3ee;text-align:center;max-width:420px}
+</style>
+</head>
+<body>
+  <video src="midia/feliz-natal-2026.mp4" poster="midia/feliz-natal-capa.jpg" controls playsinline></video>
+  <div class="bts">
+    <button class="zap" id="enviar" type="button">📲 Enviar o vídeo pelo WhatsApp</button>
+    <a class="bt baixar" href="midia/feliz-natal-2026.mp4" download="feliz-natal-dannis-tur.mp4">⬇️ Baixar o vídeo</a>
+  </div>
+  <p id="msg">No celular, o botão verde abre o compartilhar: escolha o WhatsApp e depois o grupo ou o status.</p>
+<script>
+  document.getElementById("enviar").onclick = async () => {
+    const msg = document.getElementById("msg"), bt = document.getElementById("enviar");
+    bt.disabled = true; bt.textContent = "Preparando o vídeo…";
+    try {
+      const blob = await (await fetch("midia/feliz-natal-2026.mp4")).blob();
+      const file = new File([blob], "feliz-natal-dannis-tur.mp4", {type: "video/mp4"});
+      if (navigator.canShare && navigator.canShare({files: [file]})) {
+        await navigator.share({files: [file], text: "Feliz Natal! 🎄 Vem com a gente!!! 🚐"});
+        return;
+      }
+      msg.textContent = "Esse aparelho não deixa enviar o vídeo direto. Toque em “Baixar o vídeo” e anexe no WhatsApp pela galeria.";
+    } catch (e) {
+      if (!(e && e.name === "AbortError")) msg.textContent = "Não consegui abrir o compartilhar. Toque em “Baixar o vídeo” e anexe no WhatsApp pela galeria.";
+    } finally { bt.disabled = false; bt.textContent = "📲 Enviar o vídeo pelo WhatsApp"; }
+  };
+</script>
+</body>
+</html>
