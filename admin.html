@@ -512,10 +512,16 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   /* lista de uma van: pro zap do tio, pra copiar e pra imprimir */
   const cineVans = () => [...cineTios, ...new Set(cine.map(c => c.tio).filter(t => !cineTios.includes(t)))];
   const cineDoTio = (t, so) => cine.filter(c => c.tio === t && (!so || c.pago)).sort((a, b) => String(a.crianca).localeCompare(String(b.crianca), "pt-BR"));
+  const LINHA_Z = "━━━━━━━━━━━━━━━";
+  const cineCab = () => `🎬 *PASSEIO DO CINEMA*\n📅 Sábado, 28/11\n🍿 Sessão às 9h · Cine Sumaré\n🕖 Busca a partir das 7:45`;
+  function cineBlocoTio(t, so){
+    const l = cineDoTio(t, so); if (!l.length) return "";
+    const pagos = l.filter(c => c.pago).length;
+    return `🚐 *${t.toUpperCase()}*\n👧👦 *${l.length} criança${l.length !== 1 ? "s" : ""}*${so ? " (só quem pagou)" : ` · ✅ ${pagos} pago${pagos !== 1 ? "s" : ""} · ⏳ ${l.length - pagos} falta${l.length - pagos !== 1 ? "m" : ""}`}\n${LINHA_Z}\n\n` +
+      l.map((c, i) => `*${i + 1}) ${String(c.crianca).toUpperCase()}*\n🏫 ${c.escola} · ${c.periodo}\n👤 ${c.responsavel}\n📞 ${c.celular}${so ? "" : `\n${c.pago ? "✅ Pago" : "⏳ Falta pagar"}`}`).join("\n\n");
+  }
   function cineTextoTio(t, so){
-    const l = cineDoTio(t, so);
-    return `🎬 *PASSEIO DO CINEMA – 28/11 (sábado)*\n🚐 *${t.toUpperCase()}* – ${l.length} criança${l.length !== 1 ? "s" : ""}${so ? " (só quem pagou)" : ""}\nBusca a partir das 7:45 · sessão às 9h no Cine Sumaré\n\n` +
-      l.map((c, i) => `${i + 1}. *${c.crianca}* – ${c.escola} ${c.periodo}\n    👤 ${c.responsavel} · ${c.celular}${so ? "" : (c.pago ? " · ✅ pago" : " · ⏳ falta pagar")}`).join("\n");
+    return `${LINHA_Z}\n${cineCab()}\n${LINHA_Z}\n\n${cineBlocoTio(t, so)}\n\n${LINHA_Z}`;
   }
   /* pesquisa: ignora acento e maiúscula; telefone pelos números */
   const semAcento = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -596,11 +602,9 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     preparaImpressao(paginas); window.print();
   };
   $("#cineCopiar").onclick = async () => {
-    const so = $("#cineSoPagos").checked, vans = [...cineTios, ...new Set(cine.map(c => c.tio).filter(t => !cineTios.includes(t)))];
-    const txt = `🎬 *CINEMA 28/11 – lista por van*${so ? " (só pagos)" : ""}\n` + vans.map(t => {
-      const l = cine.filter(c => c.tio === t && (!so || c.pago)); if (!l.length) return "";
-      return `\n🚐 *${t.toUpperCase()}* (${l.length})\n` + l.map((c, i) => `${i + 1}. ${c.crianca} – ${c.escola} ${c.periodo}${so ? "" : (c.pago ? " – ✅ pago" : " – ⏳ falta pagar")}`).join("\n");
-    }).join("\n");
+    const so = $("#cineSoPagos").checked;
+    const blocos = cineVans().map(t => cineBlocoTio(t, so)).filter(Boolean);
+    const txt = `${LINHA_Z}\n${cineCab()}\n${LINHA_Z}\n\n` + blocos.join(`\n\n${LINHA_Z}\n\n`) + `\n\n${LINHA_Z}`;
     try { await navigator.clipboard.writeText(txt.trim()); $("#cineMsg").textContent = "Lista copiada! Cole no WhatsApp."; }
     catch(e){ $("#cineMsg").textContent = "Não consegui copiar."; }
     setTimeout(() => { $("#cineMsg").textContent = ""; }, 4000);
