@@ -84,6 +84,9 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 .cine-van h4 small{font-family:var(--f-corpo);font-size:13px;color:var(--tinta-2);font-weight:600}
 .cine-item{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;border:1px solid var(--linha);border-radius:12px;padding:8px 10px;font-size:14px}
 .cine-item.pago{background:#eaf7ef;border-color:#9fd6b4}
+.cine-van-bts{display:flex;gap:8px;flex-wrap:wrap;margin:-2px 0 4px}
+.cine-van-bts a,.cine-van-bts button{font:700 13px var(--f-corpo);border-radius:999px;padding:7px 12px;border:1.5px solid var(--linha);background:#fff;color:var(--tinta);text-decoration:none;cursor:pointer}
+.cine-van-bts a{background:#1fa855;border-color:#1fa855;color:#fff}
 .cine-busca input{font-size:16px}
 .cine-achou{margin:0;font-weight:800;font-size:15px;padding:8px 12px;border-radius:10px;background:#eaf7ef;color:#1b6b3a}
 .cine-achou.nao{background:#fdecec;color:#a3222b}
@@ -175,6 +178,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
       <div class="cine-bts">
         <label class="check"><input type="checkbox" id="cineSoPagos"> Só quem pagou</label>
         <button class="btn btn-sec" type="button" id="cineCopiar">Copiar lista por van</button>
+        <button class="btn btn-sec" type="button" id="cineImprimir">🖨️ Imprimir listas por van</button>
         <a class="btn btn-link" href="cinema.html" target="_blank" rel="noopener">Abrir a página do passeio</a>
       </div>
       <div class="busca cine-busca">
@@ -505,6 +509,14 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     try { const r = await api("admin_cinema", {senha}); cine = r.lista || []; cineTios = r.tios || cineTios; desenhaCinema(); }
     catch(e){ $("#cineResumo").textContent = "não consegui carregar"; }
   }
+  /* lista de uma van: pro zap do tio, pra copiar e pra imprimir */
+  const cineVans = () => [...cineTios, ...new Set(cine.map(c => c.tio).filter(t => !cineTios.includes(t)))];
+  const cineDoTio = (t, so) => cine.filter(c => c.tio === t && (!so || c.pago)).sort((a, b) => String(a.crianca).localeCompare(String(b.crianca), "pt-BR"));
+  function cineTextoTio(t, so){
+    const l = cineDoTio(t, so);
+    return `🎬 *PASSEIO DO CINEMA – 28/11 (sábado)*\n🚐 *${t.toUpperCase()}* – ${l.length} criança${l.length !== 1 ? "s" : ""}${so ? " (só quem pagou)" : ""}\nBusca a partir das 7:45 · sessão às 9h no Cine Sumaré\n\n` +
+      l.map((c, i) => `${i + 1}. *${c.crianca}* – ${c.escola} ${c.periodo}\n    👤 ${c.responsavel} · ${c.celular}${so ? "" : (c.pago ? " · ✅ pago" : " · ⏳ falta pagar")}`).join("\n");
+  }
   /* pesquisa: ignora acento e maiúscula; telefone pelos números */
   const semAcento = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   function cineBate(c, q){
@@ -540,12 +552,18 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
       const doTio = cine.filter(c => c.tio === t && (!so || c.pago) && cineBate(c, q));
       const todos = cine.filter(c => c.tio === t);
       if (!todos.length || (q && !doTio.length)) return "";
+      const tv = TIOS_V.find(x => x.nome === t);
       return `<div class="cine-van"><h4>${esc(t)} <small>${todos.length} criança${todos.length > 1 ? "s" : ""} · ${todos.filter(c => c.pago).length} pago${todos.filter(c => c.pago).length !== 1 ? "s" : ""}</small></h4>
+        ${q ? "" : `<div class="cine-van-bts">${tv ? `<a href="${zapLink(tv.fone, cineTextoTio(t, so))}" target="_blank" rel="noopener">📲 Mandar lista pro ${esc(t)}</a>` : ""}<button type="button" class="cine-cp" data-t="${esc(t)}">Copiar lista</button></div>`}
         ${doTio.map(c => `<div class="cine-item${c.pago ? " pago" : ""}">
           <span><b>${marcaBusca(c.crianca, q)}</b> · ${esc(c.escola)} ${esc(c.periodo)}<br><small>${marcaBusca(c.responsavel, q)} · ${esc(c.celular)} · ${esc(c.grupo)}</small></span>
           <span class="acoes-c"><button type="button" class="bt-pago" data-g="${esc(c.grupo)}" data-v="${c.pago ? "" : "1"}">${c.pago ? "✅ Pago" : "Marcar pago"}</button>
           <button type="button" class="bt-x" data-id="${esc(c.id)}">tirar</button></span></div>`).join("") || `<small>Ninguém pago ainda nessa van.</small>`}</div>`;
     }).join("") || (q ? "" : `<div class="vazio">Quando alguém se inscrever no passeio, aparece aqui separado por van.</div>`);
+    $("#cineLista").querySelectorAll(".cine-cp").forEach(b => b.onclick = async () => {
+      try { await navigator.clipboard.writeText(cineTextoTio(b.dataset.t, $("#cineSoPagos").checked)); $("#cineMsg").textContent = `Lista do ${b.dataset.t} copiada! Cole no WhatsApp.`; }
+      catch(e){ $("#cineMsg").textContent = "Não consegui copiar."; }
+    });
     $("#cineLista").querySelectorAll(".bt-pago").forEach(b => b.onclick = async () => {
       const irmaos = cine.filter(c => c.grupo === b.dataset.g).length;
       if (irmaos > 1 && !confirm(`Essa inscrição (${b.dataset.g}) tem ${irmaos} crianças no mesmo Pix. ${b.dataset.v ? "Marcar todas como pagas?" : "Desmarcar todas?"}`)) return;
@@ -562,6 +580,21 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   }
   $("#cineSoPagos").onchange = desenhaCinema;
   $("#cineBusca").oninput = desenhaCinema;
+  $("#cineImprimir").onclick = () => {
+    const so = $("#cineSoPagos").checked;
+    const paginas = cineVans().map(t => {
+      const l = cineDoTio(t, so); if (!l.length) return "";
+      return `<div style="font:13px Arial;padding:8px;page-break-after:always;break-after:page">
+        <h2 style="margin:0 0 2px;font-size:20px">🎬 Passeio do Cinema – 28/11 (sábado) · 🚐 ${esc(t)}</h2>
+        <p style="margin:0 0 8px">Cine Sumaré · sessão às 9h · busca a partir das 7:45 · <b>${l.length} criança${l.length !== 1 ? "s" : ""}</b>${so ? " (só quem pagou)" : ""} · impresso em ${fmtData(hojeISO())}</p>
+        <table style="width:100%;border-collapse:collapse" border="1" cellpadding="5">
+          <tr style="background:#eee"><th>#</th><th>Criança</th><th>Escola · período</th><th>Responsável · telefone</th><th>Pago</th><th>Ida ✓</th><th>Volta ✓</th></tr>
+          ${l.map((c, k) => `<tr><td>${k + 1}</td><td><b>${esc(c.crianca)}</b></td><td>${esc(c.escola)} · ${esc(c.periodo)}</td><td>${esc(c.responsavel)}<br>${esc(c.celular)}</td><td style="text-align:center">${c.pago ? "✅" : "⏳"}</td><td style="width:52px"></td><td style="width:52px"></td></tr>`).join("")}
+        </table></div>`;
+    }).join("");
+    if (!paginas){ $("#cineMsg").textContent = "Ninguém na lista pra imprimir."; return; }
+    preparaImpressao(paginas); window.print();
+  };
   $("#cineCopiar").onclick = async () => {
     const so = $("#cineSoPagos").checked, vans = [...cineTios, ...new Set(cine.map(c => c.tio).filter(t => !cineTios.includes(t)))];
     const txt = `🎬 *CINEMA 28/11 – lista por van*${so ? " (só pagos)" : ""}\n` + vans.map(t => {
