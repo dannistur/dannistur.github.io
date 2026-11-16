@@ -46,6 +46,7 @@ function doPost(e){
       case "admin_cinema_pago": admin_(req); return json_(cineMarca_(req, "pago"));
       case "admin_cinema_cancelar": admin_(req); return json_(cineMarca_(req, "cancelado"));
       case "admin_cinema_limite": admin_(req); return json_(cineMudaLimite_(req));
+      case "admin_cinema_tio":    admin_(req); return json_(cineMudaTio_(req));
       case "admin_van":        admin_(req); return json_(defineVan_(req));
       case "admin_custos":     admin_(req); return json_(salvaCustos_(req));
       case "preco_combinado":  return json_(precoCombinadoPublico_(req));
@@ -558,6 +559,18 @@ function cineLista_(){
   const sh = planilha_().getSheetByName(CINE_ABA);
   const lista = sh ? sh.getDataRange().getValues().slice(1).map(cineObj_).filter(o => o.id !== "" && !o.cancelado) : [];
   return {ok: true, lista, valor: CINE_VALOR, tios: TIOS, limite: cineLimite_()};
+}
+/* troca a criança de van (quando a mãe marcou o tio errado) */
+function cineMudaTio_(req){
+  if (TIOS.indexOf(req.tio) < 0) throw erro_("Van inválida.");
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const sh = cineAba_(), vals = sh.getDataRange().getValues(), ct = CINE_COLS.indexOf("tio");
+    for (let i = 1; i < vals.length; i++){
+      if (String(vals[i][0]) === String(req.id)){ sh.getRange(i + 1, ct + 1).setValue(req.tio); return cineLista_(); }
+    }
+    throw erro_("Inscrição não encontrada.");
+  } finally { lock.releaseLock(); }
 }
 /* marca (ou desmarca) pago / cancelado: por grupo inteiro ou por criança */
 function cineMarca_(req, campo){

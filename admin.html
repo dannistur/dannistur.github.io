@@ -98,6 +98,8 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 .cine-achou.nao{background:#fdecec;color:#a3222b}
 .cine-item mark{background:#ffe27a;color:inherit;border-radius:3px;padding:0 1px}
 .cine-item small{color:var(--tinta-2)}
+.cine-troca{grid-column:1/-1;display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:13px;font-weight:700;color:var(--tinta-2)}
+.cine-troca select{flex:1;min-width:0;font:600 14px var(--f-corpo);padding:5px 8px;border:1.5px solid var(--linha);border-radius:10px;background:#fff}
 .cine-item .acoes-c{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .bt-pago{border:2px solid var(--ok);background:#fff;color:var(--ok);border-radius:999px;padding:4px 12px;font:inherit;font-weight:700;cursor:pointer}
 .cine-item.pago .bt-pago{background:var(--ok);color:#fff}
@@ -592,7 +594,8 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
         ${doTio.map(c => `<div class="cine-item${c.pago ? " pago" : ""}">
           <span><b>${marcaBusca(c.crianca, q)}</b> · ${esc(c.escola)} ${esc(c.periodo)}<br><small>${marcaBusca(c.responsavel, q)} · ${esc(c.celular)} · ${esc(c.grupo)}</small></span>
           <span class="acoes-c"><button type="button" class="bt-pago" data-g="${esc(c.grupo)}" data-v="${c.pago ? "" : "1"}">${c.pago ? "✅ Pago" : "Marcar pago"}</button>
-          <button type="button" class="bt-x" data-id="${esc(c.id)}">tirar</button></span></div>`).join("") || `<small>Ninguém pago ainda nessa van.</small>`}</div>`;
+          <button type="button" class="bt-x" data-id="${esc(c.id)}">tirar</button></span>
+          <label class="cine-troca">🚐 Trocar van: <select data-id="${esc(c.id)}">${cineTios.map(x => `<option${x === c.tio ? " selected" : ""}>${esc(x)}</option>`).join("")}</select></label></div>`).join("") || `<small>Ninguém pago ainda nessa van.</small>`}</div>`;
     }).join("") || (q ? "" : `<div class="vazio">Quando alguém se inscrever no passeio, aparece aqui separado por van.</div>`);
     $("#cineLista").querySelectorAll(".cine-cp").forEach(b => b.onclick = async () => {
       try { await navigator.clipboard.writeText(cineTextoTio(b.dataset.t, $("#cineSoPagos").checked)); $("#cineMsg").textContent = `Lista do ${b.dataset.t} copiada! Cole no WhatsApp.`; }
@@ -604,6 +607,12 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
       b.disabled = true;
       try { const r = await api("admin_cinema_pago", {senha, grupo: b.dataset.g, valor: !!b.dataset.v}); cine = r.lista; desenhaCinema(); }
       catch(e){ $("#cineMsg").textContent = e.message; b.disabled = false; }
+    });
+    $("#cineLista").querySelectorAll(".cine-troca select").forEach(sel => sel.onchange = async () => {
+      const c = cine.find(x => String(x.id) === sel.dataset.id); if (!c) return;
+      sel.disabled = true; $("#cineMsg").textContent = `Mudando ${c.crianca} pra van do ${sel.value}…`;
+      try { const r = await api("admin_cinema_tio", {senha, id: c.id, tio: sel.value}); cine = r.lista; desenhaCinema(); $("#cineMsg").textContent = `✅ ${c.crianca} agora está na van do ${sel.value}.`; }
+      catch(e){ $("#cineMsg").textContent = e.message; sel.value = c.tio; sel.disabled = false; }
     });
     $("#cineLista").querySelectorAll(".bt-x").forEach(b => b.onclick = async () => {
       const c = cine.find(x => String(x.id) === b.dataset.id);
