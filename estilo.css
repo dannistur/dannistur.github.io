@@ -456,3 +456,14 @@ img.van{height:auto}
 .cine-capa.esgotado .cine-esg-selo{display:block;position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) rotate(-12deg);background:#d61f2c;color:#fff;border:5px solid #fff;outline:4px solid #d61f2c;border-radius:12px;padding:6px 22px 10px;font:italic 900 clamp(34px,9vw,60px)/1 Kanit,Figtree,sans-serif;letter-spacing:.04em;box-shadow:0 10px 26px rgba(0,0,0,.45);white-space:nowrap}
 .cine-capa.esgotado img{filter:saturate(.75) brightness(.85)}
 .cine-capa.esgotado .cine-cta{background:#d61f2c;color:#fff;animation:none}
+
+/* renovação: com qual tio(a) o aluno vai (opcional) */
+.tios-r{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px}
+.tio-r{position:relative}
+.tio-r input{position:absolute;opacity:0;pointer-events:none}
+.tio-r span{display:flex;align-items:center;gap:10px;border:2px solid var(--linha);border-radius:14px;padding:8px;font-weight:700;cursor:pointer;background:#fff;min-height:58px}
+.tio-r img{width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none;background:#eee}
+.tio-r.nao-sei{grid-column:1/-1}
+.tio-r.nao-sei span{justify-content:center;min-height:0;font-weight:600;color:var(--tinta-2)}
+.tio-r input:checked + span{border-color:var(--roxo);background:#f6ecf7;box-shadow:0 0 0 2px var(--roxo) inset;color:var(--tinta)}
+.tio-r input:focus-visible + span{outline:3px solid var(--laranja);outline-offset:2px}

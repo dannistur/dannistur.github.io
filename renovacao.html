@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=36">
+<link rel="stylesheet" href="estilo.css?v=37">
 <style>body{margin:0}</style>
 </head>
 <body>
@@ -255,6 +255,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
   let nAluno = 0;
   const opcoes = [...ESCOLAS, {id:"outra", nome:"Outra escola"}].map(e=>`<option value="${e.id}">${e.nome}</option>`).join("");
   function atualizaOutra(c){ c.querySelector(".a-outra-wrap").hidden = c.querySelector(".a-escola").value!=="outra"; }
+  const TIOS_R = [{nome:"Tio Daniel", foto:"img/tio-daniel.jpg"}, {nome:"Tia Joyce", foto:"img/tia-joyce.jpg"}, {nome:"Tio Luiz", foto:"img/tio-luiz.jpg"}, {nome:"Tia Cintia", foto:"img/tia-cintia.jpg"}];
   function addAluno(){
     nAluno++; const id = "a"+nAluno;
     const d = document.createElement("div"); d.className="aluno";
@@ -273,6 +274,12 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
         <div class="campo inteiro"><span style="font-weight:600;font-size:14px" id="${id}tl">Trajeto</span>
           <div class="chips" role="radiogroup" aria-labelledby="${id}tl">
             ${["Ida e volta","Só ida","Só volta"].map((p,i)=>`<label class="chip"><input type="radio" name="${id}t" value="${p}" ${i===0?'checked':''}><span>${p}</span></label>`).join("")}
+          </div>
+        </div>
+        <div class="campo inteiro"><span style="font-weight:600;font-size:14px" id="${id}vl">Com qual tio(a) o aluno vai? <span class="opc">(se já souber)</span></span>
+          <div class="tios-r" role="radiogroup" aria-labelledby="${id}vl">
+            ${TIOS_R.map(t=>`<label class="tio-r"><input type="radio" name="${id}v" value="${t.nome}"><span><img src="${t.foto}" alt="" loading="lazy">${t.nome}</span></label>`).join("")}
+            <label class="tio-r nao-sei"><input type="radio" name="${id}v" value="" checked><span>🤷 Ainda não sei</span></label>
           </div>
         </div>
       </div>`;
@@ -314,12 +321,12 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
     const alunos = [];
     document.querySelectorAll("#alunos .aluno").forEach(c=>{
       const nome=c.querySelector(".a-nome"), nasc=c.querySelector(".a-nasc"), es=c.querySelector(".a-escola"), outra=c.querySelector(".a-outra");
-      const per = c.querySelector('input[name$="p"]:checked'), tr = c.querySelector('input[name$="t"]:checked');
+      const per = c.querySelector('input[name$="p"]:checked'), tr = c.querySelector('input[name$="t"]:checked'), tio = c.querySelector('input[name$="v"]:checked');
       req(nome, nome.value.trim().length>=3); req(nasc, !!nasc.value);
       if (es.value==="outra") req(outra, !!outra.value.trim());
       const chips = c.querySelector(".a-per");
       if (!per){ ok=false; chips.style.outline="2px solid var(--erro)"; chips.style.outlineOffset="4px"; chips.style.borderRadius="999px"; primeiro = primeiro || chips; } else chips.style.outline="none";
-      alunos.push({nome:nome.value.trim(), nasc:nasc.value, escola: es.value==="outra" ? outra.value.trim() : (ESCOLAS.find(x=>x.id===es.value)||{}).nome, periodo: per?per.value:"", trajeto: tr?tr.value:"Ida e volta"});
+      alunos.push({nome:nome.value.trim(), nasc:nasc.value, escola: es.value==="outra" ? outra.value.trim() : (ESCOLAS.find(x=>x.id===es.value)||{}).nome, periodo: per?per.value:"", trajeto: tr?tr.value:"Ida e volta", tio: tio?tio.value:""});
     });
     if (!ok){ $("#e2Err").textContent = motivo; primeiro?.scrollIntoView({behavior:"smooth",block:"center"}); primeiro?.focus?.(); return; }
     $("#e2Err").textContent = "";
@@ -349,7 +356,7 @@ if (!/[?&]teste\b/.test(location.search)) document.write('<style>main.renova{dis
       ["Telefones", [dados.celular, dados.foneCasa && `casa ${dados.foneCasa}`, dados.outroFone && `outro ${dados.outroFone}`].filter(Boolean).join(" · ")]];
     if (dados.email) L.push(["E-mail", dados.email]);
     L.push(["Endereço", `${dados.rua} – ${dados.bairro} – ${dados.cidade} – CEP ${dados.cep}`]);
-    dados.alunos.forEach((a,i)=>L.push([dados.alunos.length>1?`Aluno ${i+1}`:"Aluno", `${a.nome} · nasc. ${fmtData(a.nasc)}\n${a.escola} · ${a.periodo} · ${a.trajeto}`]));
+    dados.alunos.forEach((a,i)=>L.push([dados.alunos.length>1?`Aluno ${i+1}`:"Aluno", `${a.nome} · nasc. ${fmtData(a.nasc)}\n${a.escola} · ${a.periodo} · ${a.trajeto}${a.tio ? `\n🚐 Vai com ${a.tio}` : ""}`]));
     L.push(["Valor", `R$ ${DT.brl(dados.valores.mensalidade)} por mês · ${dados.valores.parcelas} parcelas (${DT.vigencia(dados.dataCadastro).de} a ${DT.vigencia(dados.dataCadastro).ate}) · total R$ ${DT.brl(dados.valores.total)}`]);
     if (dados.obs) L.push(["Observações", dados.obs]);
     $("#resumo").innerHTML = L.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v).replace(/\n/g,"<br>")}</dd></div>`).join("");

@@ -88,6 +88,7 @@ function cadastrar_(d){
       rua:limpa_(d.rua,120), bairro:limpa_(d.bairro,60), cidade:limpa_(d.cidade,60), cep:limpa_(d.cep,9),
       alunos_texto: alunos.map(a => `${a.nome} (${fmt_(a.nasc)}) – ${a.escola} – ${a.periodo} – ${a.trajeto}`).join("\n"),
       alunos_json: JSON.stringify(alunos), obs:limpa_(d.obs,500), data_cadastro: hoje_(),
+      vans_json: JSON.stringify(d.alunos.slice(0,8).map(a => TIOS.indexOf(String(a.tio || "")) >= 0 ? String(a.tio) : "")),   // tio(a) que a família já sabe; o admin pode trocar
       tipo: d.tipo === "novo" ? "novo" : "renovacao",
       assinatura: ass, assinado_em: ass ? agora_() : "", assinatura_info: ass ? "Assinado na tela pelo responsável · " + limpa_(d.aparelho, 160) : ""
     };
