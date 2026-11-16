@@ -242,8 +242,10 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
       <div class="v-acoes" id="vAcoes" hidden>
         <a class="btn btn-zap" id="vZap" href="#" target="_blank" rel="noopener">Mandar a lista no WhatsApp</a>
         <button class="btn btn-sec" type="button" id="vCopiar">Copiar lista</button>
-        <button class="btn btn-sec" type="button" id="vImprimir">Imprimir lista</button>
+        <button class="btn btn-sec" type="button" id="vImprimir">🖨️ Imprimir lista de contatos</button>
+        <button class="btn btn-sec" type="button" id="vPdf">📄 PDF da lista de contatos</button>
       </div>
+      <button class="btn btn-sec" type="button" id="vImprimirTodas">🖨️ Imprimir contatos de todas as vans (uma folha por van)</button>
       <p class="ok-msg" id="vMsg" role="status"></p>
     </div>
 
@@ -397,7 +399,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   }
   function textoLista(tio, l){
     return `🚐 *${tio.toUpperCase()} – alunos 2027* (${l.length})\n` + l.map((x, k) =>
-      `\n${k + 1}. *${x.a.nome}* – ${x.a.escola} · ${x.a.periodo}${x.a.trajeto && x.a.trajeto !== "Ida e volta" ? " · " + x.a.trajeto : ""}\n   📍 ${x.f.rua} – ${x.f.bairro}\n   📞 ${x.f.responsavel.split(" ")[0]}: ${x.f.celular}${x.f.foneCasa ? " · casa " + x.f.foneCasa : ""}`).join("\n");
+      `\n${k + 1}. *${x.a.nome}* – ${x.a.escola} · ${x.a.periodo}${x.a.trajeto && x.a.trajeto !== "Ida e volta" ? " · " + x.a.trajeto : ""}\n   📍 ${x.f.rua} – ${x.f.bairro}\n   📞 ${x.f.responsavel.split(" ")[0]}: ${x.f.celular}${x.f.foneCasa ? " · casa " + x.f.foneCasa : ""}${x.f.outroFone ? " · outro " + x.f.outroFone : ""}`).join("\n");
   }
   $("#vCopiar").onclick = async () => {
     const t = TIOS_V.find(t => t.nome === abaVan); if (!t) return;
@@ -405,13 +407,60 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     try { await navigator.clipboard.writeText(textoLista(t.nome, l)); $("#vMsg").textContent = "Lista copiada!"; } catch(e){ $("#vMsg").textContent = "Não consegui copiar."; }
     setTimeout(() => { $("#vMsg").textContent = ""; }, 3000);
   };
+  /* lista de contatos da van: aluno + telefones dos pais, pra deixar impressa na van ou em PDF no celular do motorista */
+  function contatosHTML(tio, l, quebra){
+    let grupo = "", n = 0;
+    const linhas = l.map(x => {
+      const g = `${x.a.escola || "Sem escola"} · ${x.a.periodo || ""}`;
+      const cab = g !== grupo ? (grupo = g, `<tr><td colspan="4" style="background:#efe7f6;font-weight:bold;color:#3f1142;padding:6px 8px">🏫 ${esc(g)}</td></tr>`) : "";
+      const fones = [`<b style="font-size:15px">${esc(x.f.celular)}</b>`, x.f.foneCasa && `casa: ${esc(x.f.foneCasa)}`, x.f.outroFone && `outro: ${esc(x.f.outroFone)}`].filter(Boolean).join("<br>");
+      return cab + `<tr><td style="text-align:center;color:#666">${++n}</td><td><b style="font-size:14.5px">${esc(x.a.nome)}</b>${x.a.trajeto && x.a.trajeto !== "Ida e volta" ? `<br><small>${esc(x.a.trajeto)}</small>` : ""}</td>
+        <td>${esc(x.f.responsavel)}<br>${fones}</td><td><small>${esc(x.f.rua)} – ${esc(x.f.bairro)}</small></td></tr>`;
+    }).join("");
+    return `<div style="font:13px Arial,sans-serif;color:#111;padding:6px 4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;${quebra ? "page-break-after:always;break-after:page;" : ""}">
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #712473;padding-bottom:6px;margin-bottom:8px">
+        <div><div style="font-size:21px;font-weight:bold;color:#3f1142">📞 Contatos dos pais – Van do ${esc(tio)}</div>
+        <div style="font-size:12.5px;color:#444">Danni's Tur · 2027 · ${l.length} aluno${l.length !== 1 ? "s" : ""} · atualizado em ${fmtData(hojeISO())}</div></div>
+        <img src="logo.png" style="height:44px" alt="">
+      </div>
+      <table style="width:100%;border-collapse:collapse" border="1" cellpadding="6" bordercolor="#bbb">
+        <tr style="background:#e9dcf3;color:#3f1142"><th style="width:28px">#</th><th>Aluno</th><th>Responsável · telefones</th><th>Endereço</th></tr>${linhas}
+      </table>
+      <p style="font-size:11px;color:#666;margin:8px 0 0">Uso interno da van. Não compartilhe estes contatos.</p></div>`;
+  }
+  const tioAberto = () => TIOS_V.find(t => t.nome === abaVan);
   $("#vImprimir").onclick = () => {
-    const t = TIOS_V.find(t => t.nome === abaVan); if (!t) return;
-    const l = alunosVans().filter(x => x.tio === t.nome);
-    preparaImpressao(`<div style="font:14px Arial;padding:10px"><h2 style="margin:0 0 4px">🚐 ${esc(t.nome)} – alunos 2027</h2><p style="margin:0 0 10px">${l.length} aluno(s) · impresso em ${fmtData(hojeISO())}</p>
-      <table style="width:100%;border-collapse:collapse" border="1" cellpadding="5"><tr><th>#</th><th>Aluno</th><th>Escola · período</th><th>Endereço</th><th>Responsável · telefone</th></tr>
-      ${l.map((x, k) => `<tr><td>${k + 1}</td><td>${esc(x.a.nome)}</td><td>${esc(x.a.escola)} · ${esc(x.a.periodo)}${x.a.trajeto && x.a.trajeto !== "Ida e volta" ? " · " + esc(x.a.trajeto) : ""}</td><td>${esc(x.f.rua)} – ${esc(x.f.bairro)}</td><td>${esc(x.f.responsavel)}<br>${esc(x.f.celular)}</td></tr>`).join("")}</table></div>`);
-    window.print();
+    const t = tioAberto(); if (!t) return;
+    preparaImpressao(contatosHTML(t.nome, alunosVans().filter(x => x.tio === t.nome))); window.print();
+  };
+  $("#vImprimirTodas").onclick = () => {
+    const l = alunosVans(), pags = TIOS_V.map(t => l.filter(x => x.tio === t.nome)).map((lt, i) => lt.length ? contatosHTML(TIOS_V[i].nome, lt, true) : "").join("");
+    if (!pags){ $("#vMsg").textContent = "Ainda não tem aluno separado por van."; return; }
+    preparaImpressao(pags); window.print();
+  };
+  $("#vPdf").onclick = async () => {
+    const t = tioAberto(); if (!t) return;
+    const bt = $("#vPdf"); bt.disabled = true; $("#vMsg").textContent = "Gerando o PDF…";
+    const caixa = document.createElement("div");
+    caixa.style.cssText = "position:fixed;left:0;top:0;width:720px;background:#fff;z-index:-1;pointer-events:none";
+    caixa.innerHTML = contatosHTML(t.nome, alunosVans().filter(x => x.tio === t.nome));
+    document.body.appendChild(caixa);
+    try {
+      await DT.carregaPdfLib();
+      await Promise.all([...caixa.querySelectorAll("img")].map(i => i.complete ? null : new Promise(r => { i.onload = i.onerror = r; })).filter(Boolean));
+      const blob = await html2pdf().set({margin:[10,10,10,10], image:{type:"jpeg", quality:0.92}, html2canvas:{scale:2, backgroundColor:"#ffffff", scrollX:0, scrollY:0, x:0, y:0, windowWidth:760, width:720},
+        jsPDF:{unit:"mm", format:"a4", orientation:"portrait"}, pagebreak:{mode:["css"], avoid:["tr"]}}).from(caixa.firstElementChild).toPdf().output("blob");
+      const nome = `contatos-${t.nome.toLowerCase().replace(/\s+/g, "-")}-2027.pdf`;
+      const arq = new File([blob], nome, {type: "application/pdf"});
+      if (navigator.canShare && navigator.canShare({files: [arq]})) {
+        try { await navigator.share({files: [arq], title: `Contatos – Van do ${t.nome}`}); $("#vMsg").textContent = "PDF pronto!"; }
+        catch(e){ if (e.name !== "AbortError") throw e; $("#vMsg").textContent = ""; }
+      } else {
+        const u = URL.createObjectURL(blob), a = document.createElement("a"); a.href = u; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(u), 4000); $("#vMsg").textContent = `PDF baixado: ${nome}`;
+      }
+    } catch(e){ $("#vMsg").textContent = "Não consegui gerar o PDF. Tente o Imprimir e escolha “Salvar como PDF”."; }
+    finally { caixa.remove(); bt.disabled = false; }
   };
   $("#vTodos").onchange = desenhaVans;
 
