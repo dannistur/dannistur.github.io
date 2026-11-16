@@ -88,6 +88,12 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 .cine-van-bts a,.cine-van-bts button{font:700 13px var(--f-corpo);border-radius:999px;padding:7px 12px;border:1.5px solid var(--linha);background:#fff;color:var(--tinta);text-decoration:none;cursor:pointer}
 .cine-van-bts a{background:#1fa855;border-color:#1fa855;color:#fff}
 .cine-busca input{font-size:16px}
+.cine-lot{border:2px solid var(--linha);border-radius:14px;padding:12px;display:grid;gap:10px}
+.cine-lot p{margin:0;font-weight:800;font-size:16px}
+.cine-lot p.esg{color:#c21f2b}
+.cine-lot-bts{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.cine-lot-bts label{display:grid;gap:4px;font-size:13px;font-weight:700}
+.cine-lot-bts input{width:110px;font-size:18px;padding:8px 10px;border:1.5px solid var(--linha);border-radius:10px}
 .cine-achou{margin:0;font-weight:800;font-size:15px;padding:8px 12px;border-radius:10px;background:#eaf7ef;color:#1b6b3a}
 .cine-achou.nao{background:#fdecec;color:#a3222b}
 .cine-item mark{background:#ffe27a;color:inherit;border-radius:3px;padding:0 1px}
@@ -175,6 +181,14 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     </button>
     <details class="card cine-adm" id="cinema">
       <summary><h3>🎬 Cinema 28/11</h3><span id="cineResumo">carregando…</span></summary>
+      <div class="cine-lot">
+        <p id="cineLot">…</p>
+        <div class="cine-lot-bts">
+          <label>Limite de vagas <input type="number" id="cineLimite" min="1" max="300" inputmode="numeric"></label>
+          <button class="btn btn-sec" type="button" id="cineMais5">+5 vagas</button>
+          <button class="btn" type="button" id="cineSalvaLim">Salvar limite</button>
+        </div>
+      </div>
       <div class="cine-bts">
         <label class="check"><input type="checkbox" id="cineSoPagos"> Só quem pagou</label>
         <button class="btn btn-sec" type="button" id="cineCopiar">Copiar lista por van</button>
@@ -504,9 +518,22 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   $("#vansVoltar").onclick = () => { $("#vans").hidden = true; $("#painel").hidden = false; desenha(); };
 
   /* ---------- cinema 28/11: inscritos por van, marcar pago ---------- */
-  let cine = [], cineTios = ["Tio Daniel","Tia Joyce","Tio Luiz","Tia Cintia"];
+  let cine = [], cineTios = ["Tio Daniel","Tia Joyce","Tio Luiz","Tia Cintia"], cineLim = null;
+  function desenhaLotacao(){
+    if (!cineLim) return;
+    const ins = cine.length, restam = Math.max(0, cineLim - ins);
+    $("#cineLot").className = restam ? "" : "esg";
+    $("#cineLot").textContent = restam ? `🎟️ ${ins} inscritos de ${cineLim} vagas · ${restam === 1 ? "resta 1 vaga" : `restam ${restam} vagas`}` : `🔴 ESGOTADO · ${ins} inscritos de ${cineLim} vagas`;
+    if (document.activeElement !== $("#cineLimite")) $("#cineLimite").value = cineLim;
+  }
+  async function salvaLimite(n){
+    $("#cineMsg").textContent = "Salvando…";
+    try { const r = await api("admin_cinema_limite", {senha, limite: n}); cineLim = r.limite; desenhaLotacao();
+      $("#cineMsg").textContent = r.esgotado ? `Limite ${r.limite}: continua ESGOTADO.` : `Pronto! Limite ${r.limite}: ${r.restam === 1 ? "1 vaga liberada" : r.restam + " vagas liberadas"} no site. Quando encherem, volta pra ESGOTADO sozinho.`; }
+    catch(e){ $("#cineMsg").textContent = e.message || "Não consegui salvar."; }
+  }
   async function carregaCinema(){
-    try { const r = await api("admin_cinema", {senha}); cine = r.lista || []; cineTios = r.tios || cineTios; desenhaCinema(); }
+    try { const r = await api("admin_cinema", {senha}); cine = r.lista || []; cineTios = r.tios || cineTios; if (r.limite) cineLim = r.limite; desenhaCinema(); }
     catch(e){ $("#cineResumo").textContent = "não consegui carregar"; }
   }
   /* lista de uma van: pro zap do tio, pra copiar e pra imprimir */
@@ -543,6 +570,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     return out;
   }
   function desenhaCinema(){
+    desenhaLotacao();
     const pagos = cine.filter(c => c.pago), so = $("#cineSoPagos").checked, q = $("#cineBusca").value.trim();
     const achados = q ? cine.filter(c => cineBate(c, q)) : [];
     $("#cineAchou").hidden = !q;
@@ -586,6 +614,8 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   }
   $("#cineSoPagos").onchange = desenhaCinema;
   $("#cineBusca").oninput = desenhaCinema;
+  $("#cineSalvaLim").onclick = () => salvaLimite($("#cineLimite").value);
+  $("#cineMais5").onclick = () => salvaLimite((cineLim || cine.length) + 5);
   $("#cineImprimir").onclick = () => {
     const so = $("#cineSoPagos").checked;
     const paginas = cineVans().map(t => {

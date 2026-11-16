@@ -45,6 +45,7 @@ function doPost(e){
       case "admin_cinema":     admin_(req); return json_(cineLista_());
       case "admin_cinema_pago": admin_(req); return json_(cineMarca_(req, "pago"));
       case "admin_cinema_cancelar": admin_(req); return json_(cineMarca_(req, "cancelado"));
+      case "admin_cinema_limite": admin_(req); return json_(cineMudaLimite_(req));
       case "admin_van":        admin_(req); return json_(defineVan_(req));
       case "admin_custos":     admin_(req); return json_(salvaCustos_(req));
       case "preco_combinado":  return json_(precoCombinadoPublico_(req));
@@ -498,7 +499,15 @@ function zerarTestes(){
 const CINE_ABA = "Cinema 28-11";
 const CINE_COLS = ["id","grupo","criado_em","responsavel","celular","crianca","escola","periodo","tio","valor","pago","pago_em","cancelado"];
 const CINE_VALOR = 40;
-const CINE_LIMITE = 78;   // lugares na sala: ao chegar aqui, a inscrição fecha e o site mostra ESGOTADO
+const CINE_LIMITE = 83;   // lugares na sala (padrão): ao chegar aqui, a inscrição fecha e o site mostra ESGOTADO
+/* o limite pode ser mudado pelo admin (fica na aba Config como "cine_limite") */
+function cineLimite_(){ const n = parseInt(cfg_("cine_limite"), 10); return n > 0 ? n : CINE_LIMITE; }
+function cineMudaLimite_(req){
+  const n = parseInt(req.limite, 10);
+  if (!(n >= 1 && n <= 300)) throw erro_("Limite inválido. Use um número de 1 a 300.");
+  setCfg_("cine_limite", n);
+  return cineVagas_();
+}
 /* conta as crianças inscritas que não foram canceladas */
 function cineOcupadas_(vals){
   const ci = CINE_COLS.indexOf("cancelado");
@@ -506,8 +515,8 @@ function cineOcupadas_(vals){
 }
 function cineVagas_(){
   const sh = planilha_().getSheetByName(CINE_ABA);
-  const ocupadas = sh ? cineOcupadas_(sh.getDataRange().getValues()) : 0, restam = Math.max(0, CINE_LIMITE - ocupadas);
-  return {ok: true, limite: CINE_LIMITE, inscritos: ocupadas, restam, esgotado: restam <= 0};
+  const ocupadas = sh ? cineOcupadas_(sh.getDataRange().getValues()) : 0, restam = Math.max(0, cineLimite_() - ocupadas);
+  return {ok: true, limite: cineLimite_(), inscritos: ocupadas, restam, esgotado: restam <= 0};
 }
 const TIOS = ["Tio Daniel","Tia Joyce","Tio Luiz","Tia Cintia"];
 function cineAba_(){
@@ -534,7 +543,7 @@ function cineInscrever_(d){
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     const sh = cineAba_(), vals = sh.getDataRange().getValues();
-    const restam = CINE_LIMITE - cineOcupadas_(vals);
+    const restam = cineLimite_() - cineOcupadas_(vals);
     if (restam <= 0) throw erro_("ESGOTADO! As vagas do cinema acabaram. Fale com a Danni's Tur no WhatsApp pra entrar na lista de espera.", "esgotado");
     if (kids.length > restam) throw erro_(`Só ${restam === 1 ? "resta 1 vaga" : "restam " + restam + " vagas"} no cinema. Inscreva no máximo ${restam} ${restam === 1 ? "criança" : "crianças"}.`, "poucas_vagas");
     let id = 0; for (let i = 1; i < vals.length; i++) id = Math.max(id, Number(vals[i][0]) || 0);
@@ -548,7 +557,7 @@ function cineInscrever_(d){
 function cineLista_(){
   const sh = planilha_().getSheetByName(CINE_ABA);
   const lista = sh ? sh.getDataRange().getValues().slice(1).map(cineObj_).filter(o => o.id !== "" && !o.cancelado) : [];
-  return {ok: true, lista, valor: CINE_VALOR, tios: TIOS};
+  return {ok: true, lista, valor: CINE_VALOR, tios: TIOS, limite: cineLimite_()};
 }
 /* marca (ou desmarca) pago / cancelado: por grupo inteiro ou por criança */
 function cineMarca_(req, campo){
