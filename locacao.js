@@ -7,7 +7,7 @@
   const {esc, fmtData, brl, num, CONTRATADO, zapLink, maskCpf, maskTel} = DT;
   const RASCUNHO = "dt-locacao-rascunho";
 
-  const VEICULO_PADRAO = {modelo: "Mercedes-Benz Sprinter", placa: "DBL-3219", cor: "Prata", ano: "", renavam: "", chassi: "", lugares: ""};
+  const VEICULO_PADRAO = {modelo: "Mercedes-Benz Sprinter", placa: "DBL-3219", cor: "Prata", ano: "2006/2007", lugares: "15"};
   const CHECKLIST = [
     "Documento do veículo (CRLV) dentro do prazo",
     "Pneus em bom estado (calibrados, sem cortes)",
@@ -43,9 +43,6 @@
           <div class="campo lc-2"><label for="lcNome">Nome completo</label><input id="lcNome" autocomplete="off"></div>
           <div class="campo"><label for="lcCpf">CPF</label><input id="lcCpf" inputmode="numeric" autocomplete="off"></div>
           <div class="campo"><label for="lcRg">RG</label><input id="lcRg" autocomplete="off"></div>
-          <div class="campo"><label for="lcNac">Nacionalidade</label><input id="lcNac" value="brasileiro(a)"></div>
-          <div class="campo"><label for="lcCivil">Estado civil</label><input id="lcCivil"></div>
-          <div class="campo lc-2"><label for="lcProf">Profissão</label><input id="lcProf" value="condutor(a) de transporte escolar"></div>
           <div class="campo"><label for="lcCnh">CNH nº</label><input id="lcCnh" inputmode="numeric" autocomplete="off"></div>
           <div class="campo"><label for="lcCnhCat">Categoria da CNH</label><input id="lcCnhCat" placeholder="D"></div>
           <div class="campo"><label for="lcCnhVal">Validade da CNH</label><input id="lcCnhVal" type="date"></div>
@@ -61,10 +58,8 @@
           <div class="campo lc-2"><label for="lcModelo">Marca / modelo</label><input id="lcModelo"></div>
           <div class="campo"><label for="lcPlaca">Placa</label><input id="lcPlaca"></div>
           <div class="campo"><label for="lcCor">Cor</label><input id="lcCor"></div>
-          <div class="campo"><label for="lcAno">Ano / modelo <span class="opc">(opcional)</span></label><input id="lcAno"></div>
-          <div class="campo"><label for="lcRenavam">RENAVAM <span class="opc">(opcional)</span></label><input id="lcRenavam" inputmode="numeric"></div>
-          <div class="campo"><label for="lcChassi">Chassi <span class="opc">(opcional)</span></label><input id="lcChassi"></div>
-          <div class="campo"><label for="lcLugares">Lugares <span class="opc">(opcional)</span></label><input id="lcLugares" inputmode="numeric"></div>
+          <div class="campo"><label for="lcAno">Ano / modelo</label><input id="lcAno"></div>
+          <div class="campo"><label for="lcLugares">Lugares</label><input id="lcLugares" inputmode="numeric"></div>
         </div>
       </fieldset>
 
@@ -126,21 +121,21 @@
     .ct-lic b{color:#b3261e}
     .ct-checklist{display:grid;grid-template-columns:1fr 1fr;gap:2px 18px;font-size:12px;margin:4px 0}
     .ct-checklist span{white-space:normal}
-    .ct-veic{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #bbb;border-radius:6px;overflow:hidden}
+    .ct-veic{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid #bbb;border-radius:6px;overflow:hidden}
     .ct-veic div{padding:5px 8px;border:0 solid #ddd;border-right-width:1px;border-bottom-width:1px;font-size:12.5px}
     .ct-veic small{display:block;font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.04em}`;
   document.head.appendChild(css);
 
   /* ---------- dados ---------- */
-  const campos = ["lcNome","lcCpf","lcRg","lcNac","lcCivil","lcProf","lcCnh","lcCnhCat","lcCnhVal","lcTel","lcEnd","lcCidade","lcEmail",
-                  "lcModelo","lcPlaca","lcCor","lcAno","lcRenavam","lcChassi","lcLugares",
+  const campos = ["lcNome","lcCpf","lcRg","lcCnh","lcCnhCat","lcCnhVal","lcTel","lcEnd","lcCidade","lcEmail",
+                  "lcModelo","lcPlaca","lcCor","lcAno","lcLugares",
                   "lcRetira","lcKm","lcComb","lcInicio","lcFim","lcValor","lcPer","lcVenc","lcCaucao","lcKmLim","lcKmExc","lcMulta","lcAviso","lcAvarias"];
   const ls = {get(){ try { return JSON.parse(localStorage.getItem(RASCUNHO) || "null"); } catch(e){ return null; } },
               set(v){ try { localStorage.setItem(RASCUNHO, JSON.stringify(v)); } catch(e){} },
               del(){ try { localStorage.removeItem(RASCUNHO); } catch(e){} }};
   function padrao(){
-    const v = {lcModelo: VEICULO_PADRAO.modelo, lcPlaca: VEICULO_PADRAO.placa, lcCor: VEICULO_PADRAO.cor, lcNac: "brasileiro(a)",
-               lcProf: "condutor(a) de transporte escolar", lcCidade: "Sumaré/SP", lcMulta: "2", lcAviso: "30", lcPer: "mês"};
+    const v = {lcModelo: VEICULO_PADRAO.modelo, lcPlaca: VEICULO_PADRAO.placa, lcCor: VEICULO_PADRAO.cor, lcAno: VEICULO_PADRAO.ano, lcLugares: VEICULO_PADRAO.lugares,
+               lcCidade: "Sumaré/SP", lcMulta: "2", lcAviso: "30", lcPer: "mês"};
     campos.forEach(id => { const el = $("#" + id); el.value = v[id] != null ? v[id] : ""; });
     document.querySelectorAll("#lcCheck input").forEach(c => c.checked = false);
     $("#lcConfirma").checked = false;
@@ -153,7 +148,7 @@
   }
   function escreve(d){
     padrao(); if (!d) return;
-    campos.forEach(id => { if (d[id] != null) $("#" + id).value = d[id]; });
+    campos.forEach(id => { if (d[id] != null && !(d[id] === "" && (id === "lcAno" || id === "lcLugares"))) $("#" + id).value = d[id]; });   // rascunho antigo sem ano/lugares fica com o padrão da Sprinter
     (d.check || []).forEach((v, i) => { const c = document.querySelector(`#lcCheck input[data-i="${i}"]`); if (c) c.checked = !!v; });
     $("#lcConfirma").checked = !!d.confirma;
   }
@@ -189,12 +184,13 @@
     return `<article class="contrato">
       <div class="ct-topo"><img src="logo.png" alt="Danni's Tur"><div>${L.razao}<br>CNPJ ${L.cnpj}<br>${L.sede}</div></div>
       <h4>CONTRATO DE LOCAÇÃO DE VEÍCULO</h4>
-      <p>Pelo presente instrumento particular, de um lado, como <b>LOCADORA</b>, ${L.razao} (nome fantasia ${L.fantasia}), inscrita no CNPJ sob o nº ${L.cnpj}, com sede à ${L.sede}, proprietária do veículo abaixo descrito; e, de outro lado, como <b>LOCATÁRIO</b>, ${linha(d.lcNome, 220)}, ${linha(d.lcNac, 80)}, ${linha(d.lcCivil, 80)}, ${linha(d.lcProf, 140)}, inscrito(a) no RG nº ${linha(d.lcRg, 90)} e no CPF nº ${linha(d.lcCpf, 110)}, portador(a) da CNH nº ${linha(d.lcCnh, 100)}, categoria ${linha(d.lcCnhCat, 30)}, válida até ${linha(fmtData(d.lcCnhVal), 70)}, residente e domiciliado(a) em ${linha(d.lcEnd, 200)}, ${linha(d.lcCidade, 90)}, celular ${linha(d.lcTel, 100)}${d.lcEmail ? `, e-mail ${linha(d.lcEmail)}` : ""}; têm entre si justo e contratado o seguinte:</p>
+      <p>Pelo presente instrumento particular, de um lado, como <b>LOCADORA</b>, ${L.razao} (nome fantasia ${L.fantasia}), inscrita no CNPJ sob o nº ${L.cnpj}, com sede à ${L.sede}, proprietária do veículo abaixo descrito; e, de outro lado, como <b>LOCATÁRIO</b>, ${linha(d.lcNome, 220)}, inscrito(a) no RG nº ${linha(d.lcRg, 90)} e no CPF nº ${linha(d.lcCpf, 110)}, portador(a) da CNH nº ${linha(d.lcCnh, 100)}, categoria ${linha(d.lcCnhCat, 30)}, válida até ${linha(fmtData(d.lcCnhVal), 70)}, residente e domiciliado(a) em ${linha(d.lcEnd, 200)}, ${linha(d.lcCidade, 90)}, celular ${linha(d.lcTel, 100)}${d.lcEmail ? `, e-mail ${linha(d.lcEmail)}` : ""}; têm entre si justo e contratado o seguinte:</p>
 
       <h4>DO VEÍCULO</h4>
       <div class="ct-veic">
         <div><small>Marca / modelo</small>${esc(d.lcModelo)}</div><div><small>Placa</small>${esc(d.lcPlaca)}</div><div><small>Cor</small>${esc(d.lcCor)}</div>
-        <div><small>Ano / modelo</small>${esc(d.lcAno) || "&nbsp;"}</div><div><small>RENAVAM</small>${esc(d.lcRenavam) || "&nbsp;"}</div><div><small>Chassi</small>${esc(d.lcChassi) || "&nbsp;"}</div>
+        <div><small>Ano / modelo</small>${esc(d.lcAno) || "&nbsp;"}</div>
+        <div><small>Lugares</small>${esc(d.lcLugares) || "&nbsp;"}</div>
         <div><small>KM na entrega</small>${esc(d.lcKm) || "&nbsp;"}</div><div><small>Combustível na entrega</small>${esc(d.lcComb) || "&nbsp;"}</div><div><small>Data da entrega</small>${fmtData(d.lcRetira) || "&nbsp;"}</div>
       </div>
 
