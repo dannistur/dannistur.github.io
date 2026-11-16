@@ -499,7 +499,7 @@ function zerarTestes(){
 const CINE_ABA = "Cinema 28-11";
 const CINE_COLS = ["id","grupo","criado_em","responsavel","celular","crianca","escola","periodo","tio","valor","pago","pago_em","cancelado"];
 const CINE_VALOR = 40;
-const CINE_LIMITE = 83;   // lugares na sala (padrão): ao chegar aqui, a inscrição fecha e o site mostra ESGOTADO
+const CINE_LIMITE = 86;   // lugares na sala (padrão): ao chegar aqui, a inscrição fecha e o site mostra ESGOTADO
 /* o limite pode ser mudado pelo admin (fica na aba Config como "cine_limite") */
 function cineLimite_(){ const n = parseInt(cfg_("cine_limite"), 10); return n > 0 ? n : CINE_LIMITE; }
 function cineMudaLimite_(req){
