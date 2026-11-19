@@ -73,7 +73,7 @@
 
     card.innerHTML = `<h2>🎄 Feliz Natal!</h2>
       <p>A Família Danni's Tur deseja a você e à sua família um Natal abençoado, cheio de paz, amor e alegria.</p>
-      <div class="bts"><a class="ouro" href="cartao-natal.html">💌 Fazer um cartão de Natal</a><a href="natal-2026.html">▶️ Ver o vídeo de Natal</a></div>`;
+      <div class="bts"><a class="ouro" href="natal-2026.html">▶️ Ver o vídeo de Natal</a></div>`;
     acoes && acoes.prepend(card);
 
     /* neve caindo (azulzinha, pra aparecer no fundo claro) */
