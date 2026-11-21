@@ -54,6 +54,10 @@ function doPost(e){
       case "admin_editar":     admin_(req); return json_(adminEditar_(req));
       case "admin_precos":     admin_(req); return json_(salvaPrecos_(req));
       case "admin_teste_zap":  admin_(req); return json_({ok:true, enviado: avisaDono_("✅ Teste: os avisos da Danni's Tur estão chegando no seu WhatsApp.")});
+      case "admin_lembrete":   admin_(req); return json_(lembPainel_());
+      case "admin_lembrete_salvar": admin_(req); return json_(lembSalvar_(req));
+      case "admin_lembrete_teste":  admin_(req); return json_(lembTeste_(req));
+      case "admin_lembrete_conferir": admin_(req); return json_(lembConferir_());
       default:                 return json_({ok:false, erro:"Ação desconhecida"});
     }
   } catch(err){
@@ -441,6 +445,149 @@ function avisarAniversariantes(){
   });
   if (!hojeL.length) return;
   avisaDono_(`🎂 *Aniversariantes de hoje*\n${hojeL.join("\n")}\n\n🎉 Toque aqui pra mandar o cartão de parabéns pra família:\n${SITE}admin.html#aniversarios`);
+}
+
+/* ===================== lembrete da mensalidade (todo dia 10, WhatsApp da Danni's via YCloud) =====================
+   Vai pelo número Business da Danni's ligado no YCloud (coexistência): a mensagem cai na mesma conversa de sempre.
+   Recebe quem tem parcela no mês: contrato liberado/assinado, mês entre o início e a última parcela.
+   Usa um modelo aprovado pela Meta (categoria Utilidade) com 2 campos: {{1}} nome do responsável, {{2}} nome do(s) aluno(s). */
+const LEMB_STATUS = [STATUS.LIBERADO, STATUS.ASSINADO, STATUS.IMPRESSO, STATUS.RECEBIDO];
+const LEMB_COLS = ["quando","mes","responsavel","celular","alunos","ok","status","id","erro","familias"];
+const MESES_ = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+function lembCfg_(){
+  const p = PropertiesService.getScriptProperties();
+  return {chave: p.getProperty("YCLOUD_CHAVE") || "", de: p.getProperty("ZAP_EMPRESA") || "+5519997781210",
+          modelo: cfg_("lembrete_modelo") || "lembrete_mensalidade", idioma: cfg_("lembrete_idioma") || "pt_BR",
+          ativo: cfg_("lembrete_ativo") === "sim", ultimoMes: cfg_("lembrete_ultimo_mes")};
+}
+function foneE164_(s){ let d = String(s || "").replace(/\D/g, ""); if (d.length === 10 || d.length === 11) d = "55" + d; return (d.length === 12 || d.length === 13) && d.slice(0, 2) === "55" ? "+" + d : ""; }
+function primeiroNome_(s){ const p = String(s || "").trim().split(/\s+/)[0] || ""; return p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : ""; }
+function juntaNomes_(l){ return l.length <= 1 ? (l[0] || "") : l.slice(0, -1).join(", ") + " e " + l[l.length - 1]; }
+function mesIdx_(d){ const a = Utilities.formatDate(d || new Date(), FUSO, "yyyy-MM").split("-").map(Number); return a[0] * 12 + (a[1] - 1); }
+function nomeMesIdx_(i){ return MESES_[i % 12] + "/" + Math.floor(i / 12); }
+/* próximo dia 10 que ainda vai disparar */
+function lembProximo_(){
+  const hoje = new Date(), dia = Number(Utilities.formatDate(hoje, FUSO, "d")), idx = mesIdx_(hoje);
+  const jaFoi = cfg_("lembrete_ultimo_mes") === String(idx);
+  return (dia < 10 || (dia === 10 && !jaFoi && Number(Utilities.formatDate(hoje, FUSO, "H")) < 9)) ? idx : idx + 1;
+}
+function lembDestinos_(idx){
+  const vals = aba_().getDataRange().getValues(); vals.shift();
+  const por = {}, ordem = [];
+  vals.filter(l => l[0] !== "").map(obj_).forEach(f => {
+    if (LEMB_STATUS.indexOf(f.status) < 0) return;
+    const ini = Math.round(Number(f.inicio_idx || 0)), parc = Math.round(Number(f.parcelas || 0));
+    if (!(Number(f.mensalidade) > 0) || !(parc > 0) || !(ini > 24000)) return;
+    if (idx < ini || idx >= ini + parc) return;
+    let alunos = []; try { alunos = JSON.parse(f.alunos_json || "[]"); } catch(e){}
+    const nomes = alunos.map(a => primeiroNome_(a.nome)).filter(Boolean);
+    const fone = foneE164_(f.celular), k = fone || ("sem-" + f.id);
+    if (por[k]){ por[k].alunos = por[k].alunos.concat(nomes); por[k].familias.push(f.id); return; }
+    por[k] = {fone, celular: f.celular, responsavel: f.responsavel, nome: primeiroNome_(f.responsavel), alunos: nomes, familias: [f.id]};
+    ordem.push(k);
+  });
+  return ordem.map(k => { const d = por[k]; d.alunosTxt = juntaNomes_(d.alunos.filter((x, i, a) => a.indexOf(x) === i)) || "seu filho(a)"; return d; });
+}
+function ycloudEnvia_(c, para, campos){
+  const corpo = {from: c.de, to: para, type: "template",
+    template: {name: c.modelo, language: {code: c.idioma}, components: [{type: "body", parameters: campos.map(t => ({type: "text", text: String(t).replace(/\s+/g, " ").trim()}))}]}};
+  try {
+    const r = UrlFetchApp.fetch("https://api.ycloud.com/v2/whatsapp/messages", {method: "post", contentType: "application/json",
+      headers: {"X-API-Key": c.chave}, payload: JSON.stringify(corpo), muteHttpExceptions: true});
+    let j = {}; try { j = JSON.parse(r.getContentText()); } catch(e){}
+    const ok = r.getResponseCode() < 300 && j.status !== "failed";
+    const erro = ok ? "" : (j.errorMessage || (j.error && (j.error.message || j.error.whatsappApiError && j.error.whatsappApiError.message)) || r.getContentText().slice(0, 300));
+    return {ok, id: j.id || "", status: j.status || String(r.getResponseCode()), erro: String(erro || "")};
+  } catch(e){ return {ok: false, id: "", status: "erro", erro: String(e).slice(0, 300)}; }
+}
+function ycloudStatus_(c, ids){
+  if (!ids.length) return {};
+  const rs = UrlFetchApp.fetchAll(ids.map(id => ({url: "https://api.ycloud.com/v2/whatsapp/messages/" + encodeURIComponent(id), headers: {"X-API-Key": c.chave}, muteHttpExceptions: true})));
+  const out = {};
+  rs.forEach((r, i) => { let j = {}; try { j = JSON.parse(r.getContentText()); } catch(e){}
+    out[ids[i]] = {status: j.status || ("http " + r.getResponseCode()), erro: j.errorMessage || (j.whatsappApiError && j.whatsappApiError.message) || ""}; });
+  return out;
+}
+function lembAba_(){
+  const ss = planilha_(); let sh = ss.getSheetByName("Lembretes");
+  if (!sh){ sh = ss.insertSheet("Lembretes"); sh.getRange(1, 1, 1, LEMB_COLS.length).setValues([LEMB_COLS]).setFontWeight("bold").setBackground("#712473").setFontColor("#ffffff"); sh.setFrozenRows(1); }
+  return sh;
+}
+/* gatilho mensal (dia 10, 8h): manda o lembrete pra todo mundo que tem parcela no mês */
+function lembreteMensalidade(){
+  const c = lembCfg_(); if (!c.ativo || !c.chave) return "Desligado ou sem chave do YCloud.";
+  const hoje = new Date(); if (Utilities.formatDate(hoje, FUSO, "d") !== "10") return "Hoje não é dia 10.";
+  const idx = mesIdx_(hoje);
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    if (cfg_("lembrete_ultimo_mes") === String(idx)) return "Já foi enviado este mês.";
+    setCfg_("lembrete_ultimo_mes", String(idx));
+    const ds = lembDestinos_(idx); if (!ds.length) return "Ninguém com parcela neste mês.";
+    const sh = lembAba_(), quando = agora_(), linhas = [];
+    let ok = 0; const falhas = [];
+    ds.forEach(d => {
+      const r = d.fone ? ycloudEnvia_(c, d.fone, [d.nome || "tudo bem", d.alunosTxt]) : {ok: false, id: "", status: "sem celular", erro: "Celular inválido no cadastro"};
+      if (r.ok) ok++; else falhas.push(`• ${d.responsavel} (${d.celular || "sem celular"}): ${r.erro}`);
+      linhas.push([quando, nomeMesIdx_(idx), d.responsavel, d.fone || d.celular, d.alunosTxt, r.ok ? "sim" : "não", r.status, r.id, r.erro, d.familias.join(",")]);
+      Utilities.sleep(250);
+    });
+    sh.getRange(sh.getLastRow() + 1, 1, linhas.length, LEMB_COLS.length).setNumberFormat("@").setValues(linhas);
+    avisaDono_(`💬 *Lembrete do dia 10 (${nomeMesIdx_(idx)})*\n✅ ${ok} enviado(s)` + (falhas.length ? `\n⚠️ ${falhas.length} não foi(ram):\n${falhas.slice(0, 15).join("\n")}` : "") + `\n\nDetalhes: ${SITE}admin.html#lembrete`);
+    return ok + " enviado(s), " + falhas.length + " com problema.";
+  } finally { lock.releaseLock(); }
+}
+function lembGatilho_(ligar){
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === "lembreteMensalidade").forEach(t => ScriptApp.deleteTrigger(t));
+  if (ligar) ScriptApp.newTrigger("lembreteMensalidade").timeBased().onMonthDay(10).atHour(8).inTimezone(FUSO).create();
+}
+function lembLog_(n){
+  const sh = planilha_().getSheetByName("Lembretes"); if (!sh || sh.getLastRow() < 2) return [];
+  const de = Math.max(2, sh.getLastRow() - (n || 200) + 1);
+  return sh.getRange(de, 1, sh.getLastRow() - de + 1, LEMB_COLS.length).getValues().map(l => { const o = {}; LEMB_COLS.forEach((k, i) => o[k] = l[i] instanceof Date ? Utilities.formatDate(l[i], FUSO, "yyyy-MM-dd'T'HH:mm:ss") : String(l[i])); return o; }).reverse();
+}
+function lembPainel_(){
+  const c = lembCfg_(), idx = lembProximo_();
+  const temGatilho = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === "lembreteMensalidade");
+  return {ok: true, cfg: {temChave: !!c.chave, de: c.de, modelo: c.modelo, idioma: c.idioma, ativo: c.ativo && temGatilho, ultimoMes: c.ultimoMes ? nomeMesIdx_(Number(c.ultimoMes)) : ""},
+    proximo: {mes: nomeMesIdx_(idx), data: "10/" + String(idx % 12 + 1).padStart(2, "0") + "/" + Math.floor(idx / 12), destinos: lembDestinos_(idx).map(d => ({responsavel: d.responsavel, fone: d.fone, celular: d.celular, alunos: d.alunosTxt}))},
+    log: lembLog_(200)};
+}
+function lembSalvar_(req){
+  const p = PropertiesService.getScriptProperties(), d = req.dados || {};
+  if (d.chave != null && String(d.chave).trim()) p.setProperty("YCLOUD_CHAVE", String(d.chave).trim().slice(0, 300));
+  if (d.de != null){ const f = foneE164_(d.de); if (!f) throw erro_("Número da Danni's inválido (coloque com DDD)."); p.setProperty("ZAP_EMPRESA", f); }
+  if (d.modelo != null){ const m = String(d.modelo).trim().toLowerCase(); if (!/^[a-z0-9_]{1,512}$/.test(m)) throw erro_("Nome do modelo: só letras minúsculas, números e _ (igual está no YCloud)."); setCfg_("lembrete_modelo", m); }
+  if (d.idioma != null && /^[a-z]{2}(_[A-Z]{2})?$/.test(String(d.idioma).trim())) setCfg_("lembrete_idioma", String(d.idioma).trim());
+  if (d.ativo != null){
+    const lig = !!d.ativo;
+    if (lig && !p.getProperty("YCLOUD_CHAVE")) throw erro_("Salve a chave do YCloud antes de ligar.");
+    setCfg_("lembrete_ativo", lig ? "sim" : "não"); lembGatilho_(lig);
+  }
+  return lembPainel_();
+}
+/* manda o modelo pra um número só, pra testar (e espera uns segundos pra ver se entregou) */
+function lembTeste_(req){
+  const c = lembCfg_(); if (!c.chave) throw erro_("Salve a chave do YCloud primeiro.");
+  const para = foneE164_(req.fone); if (!para) throw erro_("Digite o celular do teste com DDD.");
+  const r = ycloudEnvia_(c, para, [primeiroNome_(req.nome) || "Teste", "Aluno Teste"]);
+  if (!r.ok) return {ok: true, enviado: false, status: r.status, erro: r.erro};
+  Utilities.sleep(6000);
+  const st = ycloudStatus_(c, [r.id])[r.id] || {};
+  return {ok: true, enviado: true, id: r.id, status: st.status || r.status, erro: st.erro || ""};
+}
+/* confere no YCloud como ficou cada mensagem do último envio (entregue, lida, falhou) */
+function lembConferir_(){
+  const c = lembCfg_(); if (!c.chave) throw erro_("Sem chave do YCloud.");
+  const sh = planilha_().getSheetByName("Lembretes"); if (!sh || sh.getLastRow() < 2) return lembPainel_();
+  const vals = sh.getRange(2, 1, sh.getLastRow() - 1, LEMB_COLS.length).getValues();
+  const ult = String(vals[vals.length - 1][0] instanceof Date ? Utilities.formatDate(vals[vals.length - 1][0], FUSO, "yyyy-MM-dd'T'HH:mm:ss") : vals[vals.length - 1][0]);
+  const iQ = 0, iId = LEMB_COLS.indexOf("id"), iSt = LEMB_COLS.indexOf("status"), iEr = LEMB_COLS.indexOf("erro");
+  const alvo = []; vals.forEach((l, i) => { const q = l[iQ] instanceof Date ? Utilities.formatDate(l[iQ], FUSO, "yyyy-MM-dd'T'HH:mm:ss") : String(l[iQ]); if (q === ult && l[iId]) alvo.push(i); });
+  for (let k = 0; k < alvo.length; k += 50){
+    const lote = alvo.slice(k, k + 50), st = ycloudStatus_(c, lote.map(i => String(vals[i][iId])));
+    lote.forEach(i => { const s = st[String(vals[i][iId])]; if (!s) return; sh.getRange(i + 2, iSt + 1).setValue(s.status); if (s.erro) sh.getRange(i + 2, iEr + 1).setValue(s.erro); });
+  }
+  return lembPainel_();
 }
 
 /* ===================== avisos ===================== */

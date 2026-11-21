@@ -104,6 +104,21 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 .bt-pago{border:2px solid var(--ok);background:#fff;color:var(--ok);border-radius:999px;padding:4px 12px;font:inherit;font-weight:700;cursor:pointer}
 .cine-item.pago .bt-pago{background:var(--ok);color:#fff}
 .bt-x{border:0;background:none;color:var(--erro);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline}
+.lemb-st{margin:0;font-weight:800;font-size:15px;padding:10px 12px;border-radius:12px;background:#fdf1e3;color:#8a4a0b}
+.lemb-st.on{background:#eaf7ef;color:#1b6b3a}
+.lemb-cx{border:2px solid var(--linha);border-radius:14px;padding:12px;display:grid;gap:10px}
+.lemb-cx h4{margin:0;font-family:var(--f-display);font-size:17px;color:var(--roxo)}
+.lemb-cx p{margin:0;font-size:13px;color:var(--tinta-2)}
+.lemb-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.lemb-campos label{display:grid;gap:4px;font-size:13px;font-weight:700}
+.lemb-campos input{font-size:16px;padding:8px 10px;border:1.5px solid var(--linha);border-radius:10px;min-width:0}
+.lemb-bts{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.lemb-prev{border:1px solid var(--linha);border-radius:12px;padding:8px 10px;background:#faf7f2;font-size:14px;line-height:1.45;white-space:pre-wrap}
+.lemb-lista{display:grid;gap:4px;max-height:320px;overflow:auto}
+.lemb-lista div{display:grid;grid-template-columns:1fr auto;gap:2px 10px;border:1px solid var(--linha);border-radius:10px;padding:6px 10px;font-size:14px}
+.lemb-lista small{color:var(--tinta-2)}
+.lemb-lista .ruim{background:#fdecec;border-color:#f0b9be}
+.lemb-lista .bom{background:#eaf7ef;border-color:#9fd6b4}
 .vans-abre{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;text-align:left;cursor:pointer;font:inherit;color:inherit;border:1px solid var(--linha)}
 .vans-abre .vi{font-size:28px;width:48px;height:48px;display:grid;place-items:center;background:#f3e8f3;border-radius:12px}
 .vans-abre b{display:block;font-family:var(--f-display);font-size:19px}
@@ -203,6 +218,41 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
       <p class="cine-achou" id="cineAchou" hidden></p>
       <p class="ok-msg" id="cineMsg" role="status"></p>
       <div id="cineLista"></div>
+    </details>
+    <details class="card cine-adm" id="lembrete">
+      <summary><h3>💬 Lembrete do dia 10</h3><span id="lembResumo">carregando…</span></summary>
+      <p class="lemb-st" id="lembSt">…</p>
+      <div class="lemb-cx">
+        <h4>Próximo envio</h4>
+        <p id="lembProxTxt"></p>
+        <div class="lemb-prev" id="lembModeloTxt"></div>
+        <div class="lemb-lista" id="lembDest"></div>
+      </div>
+      <div class="lemb-cx">
+        <h4>Ligação com o YCloud</h4>
+        <div class="lemb-campos">
+          <label>Chave da API do YCloud <input type="password" id="lembChave" autocomplete="off" placeholder="cole a chave aqui"></label>
+          <label>Número da Danni's no YCloud <input type="tel" id="lembDe" inputmode="tel" placeholder="(19) 99778-1210"></label>
+          <label>Nome do modelo aprovado <input type="text" id="lembModelo" autocapitalize="off" autocomplete="off" placeholder="lembrete_mensalidade"></label>
+        </div>
+        <div class="lemb-bts"><button class="btn" type="button" id="lembSalva">Salvar</button></div>
+      </div>
+      <div class="lemb-cx">
+        <h4>Testar antes de ligar</h4>
+        <p>Manda o lembrete só pra um celular (use outro número, não o da própria Danni's).</p>
+        <div class="lemb-campos"><label>Celular do teste <input type="tel" id="lembTesteFone" inputmode="tel" placeholder="(19) 9…"></label></div>
+        <div class="lemb-bts"><button class="btn btn-sec" type="button" id="lembTeste">Mandar teste</button></div>
+      </div>
+      <div class="lemb-bts">
+        <button class="btn" type="button" id="lembLiga">Ligar envio automático</button>
+        <button class="btn btn-sec" type="button" id="lembConfere" hidden>Conferir entregas do último envio</button>
+      </div>
+      <p class="ok-msg" id="lembMsg" role="status"></p>
+      <div class="lemb-cx" id="lembLogCx" hidden>
+        <h4>Último envio</h4>
+        <p id="lembLogTxt"></p>
+        <div class="lemb-lista" id="lembLog"></div>
+      </div>
     </details>
     <div class="card minha-ass" id="minhaAss">
       <h3>✍️ Minha assinatura (Danni's Tur)</h3>
@@ -344,7 +394,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 
   async function carregar(){
     $("#painelMsg").textContent = "Carregando…";
-    try{ const r = await api("admin_lista", {senha}); familias = r.familias.reverse(); minhaAssinatura = r.assinaturaDannis || ""; window.__dtMinhaAssinatura = minhaAssinatura; window.__dtSenha = senha; window.dispatchEvent(new CustomEvent("dt-lista", {detail: r})); custosVans = normalizaCustos(r.custosVans); mostraMinhaAss(); $("#painelMsg").textContent = ""; desenha(); resumoVans(); if (!$("#vans").hidden){ desenhaCustos(); desenhaVans(); } abrePeloLink(); carregaCinema(); }
+    try{ const r = await api("admin_lista", {senha}); familias = r.familias.reverse(); minhaAssinatura = r.assinaturaDannis || ""; window.__dtMinhaAssinatura = minhaAssinatura; window.__dtSenha = senha; window.dispatchEvent(new CustomEvent("dt-lista", {detail: r})); custosVans = normalizaCustos(r.custosVans); mostraMinhaAss(); $("#painelMsg").textContent = ""; desenha(); resumoVans(); if (!$("#vans").hidden){ desenhaCustos(); desenhaVans(); } abrePeloLink(); carregaCinema(); carregaLembrete(); }
     catch(e){ if (e.codigo==="senha"){ sair(); } else $("#painelMsg").textContent = "Não consegui carregar. Toque em Atualizar."; }
   }
   /* ---------- vans: alunos por motorista + resultado de cada van ---------- */
@@ -583,6 +633,69 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
       $("#cineMsg").textContent = r.esgotado ? `Limite ${r.limite}: continua ESGOTADO.` : `Pronto! Limite ${r.limite}: ${r.restam === 1 ? "1 vaga liberada" : r.restam + " vagas liberadas"} no site. Quando encherem, volta pra ESGOTADO sozinho.`; }
     catch(e){ $("#cineMsg").textContent = e.message || "Não consegui salvar."; }
   }
+  /* ---------- lembrete do dia 10 (WhatsApp da Danni's via YCloud) ---------- */
+  let lemb = null;
+  const LEMB_MODELO = "Olá, {{1}}! Lembrete da Danni's Tur: a mensalidade do transporte escolar de {{2}} vence hoje, dia 10. Se você já pagou, por favor desconsidere esta mensagem. Obrigado!";
+  const foneBonito = f => { const d = String(f||"").replace(/\D/g,"").replace(/^55/,""); return d.length >= 10 ? `(${d.slice(0,2)}) ${d.slice(2,-4)}-${d.slice(-4)}` : (f||""); };
+  const ST_LEMB = {accepted:"aceita", sent:"enviada", delivered:"entregue ✓", read:"lida ✓✓", failed:"falhou", "sem celular":"sem celular"};
+  function desenhaLembrete(){
+    if (!lemb) return;
+    const c = lemb.cfg, pr = lemb.proximo, ds = pr.destinos;
+    const semFone = ds.filter(d => !d.fone).length;
+    $("#lembResumo").textContent = c.ativo ? `ligado · ${ds.length} no dia ${pr.data}` : "desligado";
+    const st = $("#lembSt"); st.classList.toggle("on", c.ativo);
+    st.textContent = c.ativo ? `✅ Ligado: todo dia 10, às 8h, sai sozinho pelo WhatsApp ${foneBonito(c.de)}.` + (c.ultimoMes ? ` Último envio: ${c.ultimoMes}.` : "")
+      : !c.temChave ? "⏸️ Desligado. Falta colar a chave do YCloud aqui embaixo." : "⏸️ Desligado. Mande um teste e, se chegar certinho, toque em “Ligar envio automático”.";
+    $("#lembProxTxt").textContent = ds.length ? `Dia ${pr.data} (${pr.mes}): ${ds.length} responsável(is) com parcela no mês.` + (semFone ? ` ⚠️ ${semFone} sem celular válido no cadastro.` : "")
+      : `Dia ${pr.data} (${pr.mes}): ninguém tem parcela nesse mês. O lembrete só vai pra contrato liberado ou assinado, do mês de início até a última parcela.`;
+    const ex = ds[0] || {responsavel:"Maria", alunos:"Ana"};
+    $("#lembModeloTxt").textContent = "Exemplo: " + LEMB_MODELO.replace("{{1}}", (String(ex.responsavel).trim().split(/\s+/)[0]||"").toLowerCase().replace(/^./, m=>m.toUpperCase())).replace("{{2}}", ex.alunos);
+    $("#lembDest").innerHTML = ds.map(d => `<div class="${d.fone ? "" : "ruim"}"><span><b>${esc(d.responsavel)}</b><br><small>${esc(d.alunos)}</small></span><small>${d.fone ? esc(foneBonito(d.fone)) : "⚠️ celular inválido: " + esc(d.celular||"vazio")}</small></div>`).join("");
+    if (!$("#lembDe").value) $("#lembDe").value = foneBonito(c.de);
+    if (!$("#lembModelo").value) $("#lembModelo").value = c.modelo;
+    $("#lembChave").placeholder = c.temChave ? "chave já salva ✓ (cole outra só se quiser trocar)" : "cole a chave aqui";
+    $("#lembLiga").textContent = c.ativo ? "Desligar envio automático" : "Ligar envio automático";
+    $("#lembLiga").className = c.ativo ? "btn btn-sec" : "btn";
+    const log = lemb.log || [], ult = log.length ? log[0].quando : "";
+    const doUlt = log.filter(l => l.quando === ult);
+    $("#lembLogCx").hidden = !doUlt.length; $("#lembConfere").hidden = !doUlt.length;
+    if (doUlt.length){
+      const ruins = doUlt.filter(l => l.ok !== "sim" || l.status === "failed").length;
+      $("#lembLogTxt").textContent = `${fmtData(ult)} ${ult.slice(11,16)} · ${doUlt[0].mes} · ${doUlt.length - ruins} ok` + (ruins ? ` · ${ruins} com problema` : "");
+      $("#lembLog").innerHTML = doUlt.map(l => { const ruim = l.ok !== "sim" || l.status === "failed", bom = /delivered|read/.test(l.status);
+        return `<div class="${ruim ? "ruim" : bom ? "bom" : ""}"><span><b>${esc(l.responsavel)}</b><br><small>${esc(l.alunos)}${l.erro ? " · " + esc(l.erro) : ""}</small></span><small>${esc(foneBonito(l.celular))}<br>${esc(ST_LEMB[l.status] || l.status)}</small></div>`; }).join("");
+    }
+  }
+  async function carregaLembrete(){
+    try { lemb = await api("admin_lembrete", {senha}); desenhaLembrete(); }
+    catch(e){ $("#lembResumo").textContent = "não consegui carregar"; }
+  }
+  async function lembSalvar(dados, msg){
+    $("#lembMsg").textContent = "Salvando…";
+    try { lemb = await api("admin_lembrete_salvar", {senha, dados}); $("#lembChave").value = ""; desenhaLembrete(); $("#lembMsg").textContent = msg; }
+    catch(e){ $("#lembMsg").textContent = e.message || "Não consegui salvar."; }
+  }
+  $("#lembSalva").onclick = () => {
+    const d = {de: $("#lembDe").value, modelo: $("#lembModelo").value};
+    if ($("#lembChave").value.trim()) d.chave = $("#lembChave").value.trim();
+    lembSalvar(d, "Salvo!");
+  };
+  $("#lembLiga").onclick = () => {
+    const lig = !(lemb && lemb.cfg.ativo);
+    if (lig && !confirm(`Ligar o lembrete automático?\n\nTodo dia 10, às 8h, o WhatsApp da Danni's manda o lembrete pra cada responsável com parcela no mês (${lemb ? lemb.proximo.destinos.length : 0} no próximo).`)) return;
+    lembSalvar({ativo: lig}, lig ? "Ligado! Dia 10 às 8h sai sozinho." : "Desligado. Não sai mais nada até ligar de novo.");
+  };
+  $("#lembTeste").onclick = async () => {
+    $("#lembMsg").textContent = "Mandando teste… (espera uns segundos)";
+    try { const r = await api("admin_lembrete_teste", {senha, fone: $("#lembTesteFone").value});
+      $("#lembMsg").textContent = !r.enviado ? `Não foi: ${r.erro || r.status}` : r.status === "failed" ? `O WhatsApp recusou: ${r.erro || "confira se o modelo está aprovado e o nome está igual."}` : `Teste enviado (${ST_LEMB[r.status] || r.status}). Confira o celular do teste.`; }
+    catch(e){ $("#lembMsg").textContent = e.message || "Não consegui mandar."; }
+  };
+  $("#lembConfere").onclick = async () => {
+    $("#lembMsg").textContent = "Conferindo no YCloud…";
+    try { lemb = await api("admin_lembrete_conferir", {senha}); desenhaLembrete(); $("#lembMsg").textContent = "Atualizado."; }
+    catch(e){ $("#lembMsg").textContent = e.message || "Não consegui conferir."; }
+  };
   async function carregaCinema(){
     try { const r = await api("admin_cinema", {senha}); cine = r.lista || []; cineTios = r.tios || cineTios; if (r.limite) cineLim = r.limite; desenhaCinema(); }
     catch(e){ $("#cineResumo").textContent = "não consegui carregar"; }
@@ -774,6 +887,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   /* link do aviso do WhatsApp (…/admin.html#f=12): abre direto na família, com o cursor no valor */
   function abrePeloLink(){
     if (location.hash === "#cinema"){ history.replaceState(null, "", location.pathname); $("#cinema").open = true; setTimeout(()=>$("#cinema").scrollIntoView({behavior:"smooth", block:"start"}), 200); return; }
+    if (location.hash === "#lembrete"){ history.replaceState(null, "", location.pathname); $("#lembrete").open = true; setTimeout(()=>$("#lembrete").scrollIntoView({behavior:"smooth", block:"start"}), 200); return; }
     if (location.hash === "#aniversarios"){ history.replaceState(null, "", location.pathname); setTimeout(()=>{ if (!$("#aniv").hidden) $("#aniv").scrollIntoView({behavior:"smooth", block:"start"}); }, 200); return; }
     const m = location.hash.match(/^#f=(\d+)$/); if (!m) return;
     history.replaceState(null, "", location.pathname);
