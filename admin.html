@@ -865,11 +865,11 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
         <div style="text-align:right"><div style="font-size:17px;font-weight:800">🚐 ${esc(t)}</div><div><b>${l.length}</b> criança${l.length !== 1 ? "s" : ""}${so ? " (só pagos)" : ""}${partes.length > 1 ? ` · folha ${pi + 1}/${partes.length}` : ""}</div></div>
       </div>
       <table style="width:100%;border-collapse:collapse;table-layout:fixed">
-        <colgroup><col style="width:26px"><col style="width:21%"><col style="width:15%"><col style="width:9%"><col style="width:20%"><col style="width:16%"><col style="width:38px"><col style="width:38px"><col style="width:40px"></colgroup>
-        <tr><th style="${th}">#</th><th style="${th}">Criança</th><th style="${th}">Escola</th><th style="${th}">Período</th><th style="${th}">Responsável</th><th style="${th}">Telefone</th><th style="${th};text-align:center">Pago</th><th style="${th};text-align:center">Ida</th><th style="${th};text-align:center">Volta</th></tr>
-        ${parte.map((c, k0) => { const k = pi * POR + k0; return `<tr style="background:${k % 2 ? "#f6f0f6" : "#fff"}"><td style="${td};text-align:center">${k + 1}</td><td style="${td}"><b>${esc(c.crianca)}</b></td><td style="${td}">${esc(c.escola)}</td><td style="${td}">${esc(c.periodo)}</td><td style="${td}">${esc(c.responsavel)}</td><td style="${td};white-space:nowrap">${esc(c.celular)}</td><td style="${td};text-align:center">${c.pago ? "✔" : "—"}</td><td style="${td};text-align:center"><span style="display:inline-block;width:14px;height:14px;border:1.5px solid #333"></span></td><td style="${td};text-align:center"><span style="display:inline-block;width:14px;height:14px;border:1.5px solid #333"></span></td></tr>`; }).join("")}
+        <colgroup><col style="width:28px"><col style="width:26%"><col style="width:19%"><col style="width:10%"><col style="width:25%"><col style="width:17%"></colgroup>
+        <tr><th style="${th}">#</th><th style="${th}">Criança</th><th style="${th}">Escola</th><th style="${th}">Período</th><th style="${th}">Responsável</th><th style="${th}">Telefone</th></tr>
+        ${parte.map((c, k0) => { const k = pi * POR + k0; return `<tr style="background:${k % 2 ? "#f6f0f6" : "#fff"}"><td style="${td};text-align:center">${k + 1}</td><td style="${td}"><b>${esc(c.crianca)}</b></td><td style="${td}">${esc(c.escola)}</td><td style="${td}">${esc(c.periodo)}</td><td style="${td}">${esc(c.responsavel)}</td><td style="${td};white-space:nowrap">${esc(c.celular)}</td></tr>`; }).join("")}
       </table>
-      ${pi === partes.length - 1 ? `<p style="margin:10px 0 0;font-size:11px;color:#555">Marque <b>Ida</b> quando a criança entrar na van e <b>Volta</b> quando for entregue ao responsável. Lista gerada em ${fmtData(hojeISO())}.</p>` : ""}
+      ${pi === partes.length - 1 ? `<p style="margin:10px 0 0;font-size:11px;color:#555">Lista gerada em ${fmtData(hojeISO())}.</p>` : ""}
     </div>`).join(QUEBRA);
   }
   $("#cineImprimir").onclick = () => {
