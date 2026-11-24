@@ -224,6 +224,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
         <label class="check"><input type="checkbox" id="cineSoPagos"> Só quem pagou</label>
         <button class="btn btn-sec" type="button" id="cineCopiar">Copiar lista por van</button>
         <button class="btn btn-sec" type="button" id="cineImprimir">🖨️ Imprimir listas por van</button>
+        <button class="btn btn-sec" type="button" id="cinePdfTodas">📄 PDF de todas as vans</button>
         <a class="btn btn-link" href="cinema.html" target="_blank" rel="noopener">Abrir a página do passeio</a>
       </div>
       <details class="cine-grupo" id="cineGrupo">
@@ -814,13 +815,14 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
       if (!todos.length || (q && !doTio.length)) return "";
       const tv = TIOS_V.find(x => x.nome === t);
       return `<div class="cine-van"><h4>${esc(t)} <small>${todos.length} criança${todos.length > 1 ? "s" : ""} · ${todos.filter(c => c.pago).length} pago${todos.filter(c => c.pago).length !== 1 ? "s" : ""}</small></h4>
-        ${q ? "" : `<div class="cine-van-bts">${tv ? `<a href="${zapLink(tv.fone, cineTextoTio(t, so))}" target="_blank" rel="noopener">📲 Mandar lista pro ${esc(t)}</a>` : ""}<button type="button" class="cine-cp" data-t="${esc(t)}">Copiar lista</button></div>`}
+        ${q ? "" : `<div class="cine-van-bts">${tv ? `<a href="${zapLink(tv.fone, cineTextoTio(t, so))}" target="_blank" rel="noopener">📲 Mandar lista pro ${esc(t)}</a>` : ""}<button type="button" class="cine-cp" data-t="${esc(t)}">Copiar lista</button><button type="button" class="cine-pdf" data-t="${esc(t)}">📄 PDF pra imprimir</button></div>`}
         ${doTio.map(c => `<div class="cine-item${c.pago ? " pago" : ""}">
           <span><b>${marcaBusca(c.crianca, q)}</b> · ${esc(c.escola)} ${esc(c.periodo)}<br><small>${marcaBusca(c.responsavel, q)} · ${esc(c.celular)} · ${esc(c.grupo)}</small></span>
           <span class="acoes-c"><button type="button" class="bt-pago" data-g="${esc(c.grupo)}" data-v="${c.pago ? "" : "1"}">${c.pago ? "✅ Pago" : "Marcar pago"}</button>
           <button type="button" class="bt-x" data-id="${esc(c.id)}">tirar</button></span>
           <label class="cine-troca">🚐 Trocar van: <select data-id="${esc(c.id)}">${cineTios.map(x => `<option${x === c.tio ? " selected" : ""}>${esc(x)}</option>`).join("")}</select></label></div>`).join("") || `<small>Ninguém pago ainda nessa van.</small>`}</div>`;
     }).join("") || (q ? "" : `<div class="vazio">Quando alguém se inscrever no passeio, aparece aqui separado por van.</div>`);
+    $("#cineLista").querySelectorAll(".cine-pdf").forEach(b => b.onclick = () => cinePdf([b.dataset.t], b));
     $("#cineLista").querySelectorAll(".cine-cp").forEach(b => b.onclick = async () => {
       try { await navigator.clipboard.writeText(cineTextoTio(b.dataset.t, $("#cineSoPagos").checked)); $("#cineMsg").textContent = `Lista do ${b.dataset.t} copiada! Cole no WhatsApp.`; }
       catch(e){ $("#cineMsg").textContent = "Não consegui copiar."; }
@@ -849,21 +851,63 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
   $("#cineBusca").oninput = desenhaCinema;
   $("#cineSalvaLim").onclick = () => salvaLimite($("#cineLimite").value);
   $("#cineMais5").onclick = () => salvaLimite((cineLim || cine.length) + 5);
+  const QUEBRA = '<div class="html2pdf__page-break" style="break-after:page;page-break-after:always"></div>';
+  function cinePagina(t, so){
+    const l = cineDoTio(t, so); if (!l.length) return "";
+    const POR = 20, partes = []; for (let i = 0; i < l.length; i += POR) partes.push(l.slice(i, i + POR));   // 20 crianças por folha, cabeçalho em todas
+    const th = "background:#712473;color:#fff;padding:6px 5px;border:1px solid #712473;text-align:left;font-size:11.5px";
+    const td = "padding:6px 5px;border:1px solid #bbb;vertical-align:middle";
+    return partes.map((parte, pi) => `<div class="cine-pag" style="font:12px Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:4px 2px">
+      <div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #712473;padding-bottom:6px;margin-bottom:8px">
+        <img src="logo.png" alt="" style="height:30px">
+        <div style="flex:1"><div style="font-size:18px;font-weight:800;color:#712473">🎬 Passeio do Cinema · 28/11 (sábado)</div>
+        <div>Cine Sumaré · sessão às 9h · busca a partir das 7:45</div></div>
+        <div style="text-align:right"><div style="font-size:17px;font-weight:800">🚐 ${esc(t)}</div><div><b>${l.length}</b> criança${l.length !== 1 ? "s" : ""}${so ? " (só pagos)" : ""}${partes.length > 1 ? ` · folha ${pi + 1}/${partes.length}` : ""}</div></div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+        <colgroup><col style="width:26px"><col style="width:21%"><col style="width:15%"><col style="width:9%"><col style="width:20%"><col style="width:16%"><col style="width:38px"><col style="width:38px"><col style="width:40px"></colgroup>
+        <tr><th style="${th}">#</th><th style="${th}">Criança</th><th style="${th}">Escola</th><th style="${th}">Período</th><th style="${th}">Responsável</th><th style="${th}">Telefone</th><th style="${th};text-align:center">Pago</th><th style="${th};text-align:center">Ida</th><th style="${th};text-align:center">Volta</th></tr>
+        ${parte.map((c, k0) => { const k = pi * POR + k0; return `<tr style="background:${k % 2 ? "#f6f0f6" : "#fff"}"><td style="${td};text-align:center">${k + 1}</td><td style="${td}"><b>${esc(c.crianca)}</b></td><td style="${td}">${esc(c.escola)}</td><td style="${td}">${esc(c.periodo)}</td><td style="${td}">${esc(c.responsavel)}</td><td style="${td};white-space:nowrap">${esc(c.celular)}</td><td style="${td};text-align:center">${c.pago ? "✔" : "—"}</td><td style="${td};text-align:center"><span style="display:inline-block;width:14px;height:14px;border:1.5px solid #333"></span></td><td style="${td};text-align:center"><span style="display:inline-block;width:14px;height:14px;border:1.5px solid #333"></span></td></tr>`; }).join("")}
+      </table>
+      ${pi === partes.length - 1 ? `<p style="margin:10px 0 0;font-size:11px;color:#555">Marque <b>Ida</b> quando a criança entrar na van e <b>Volta</b> quando for entregue ao responsável. Lista gerada em ${fmtData(hojeISO())}.</p>` : ""}
+    </div>`).join(QUEBRA);
+  }
   $("#cineImprimir").onclick = () => {
     const so = $("#cineSoPagos").checked;
-    const paginas = cineVans().map(t => {
-      const l = cineDoTio(t, so); if (!l.length) return "";
-      return `<div style="font:13px Arial;padding:8px;page-break-after:always;break-after:page">
-        <h2 style="margin:0 0 2px;font-size:20px">🎬 Passeio do Cinema – 28/11 (sábado) · 🚐 ${esc(t)}</h2>
-        <p style="margin:0 0 8px">Cine Sumaré · sessão às 9h · busca a partir das 7:45 · <b>${l.length} criança${l.length !== 1 ? "s" : ""}</b>${so ? " (só quem pagou)" : ""} · impresso em ${fmtData(hojeISO())}</p>
-        <table style="width:100%;border-collapse:collapse" border="1" cellpadding="5">
-          <tr style="background:#eee"><th>#</th><th>Criança</th><th>Escola · período</th><th>Responsável · telefone</th><th>Pago</th><th>Ida ✓</th><th>Volta ✓</th></tr>
-          ${l.map((c, k) => `<tr><td>${k + 1}</td><td><b>${esc(c.crianca)}</b></td><td>${esc(c.escola)} · ${esc(c.periodo)}</td><td>${esc(c.responsavel)}<br>${esc(c.celular)}</td><td style="text-align:center">${c.pago ? "✅" : "⏳"}</td><td style="width:52px"></td><td style="width:52px"></td></tr>`).join("")}
-        </table></div>`;
-    }).join("");
+    const paginas = cineVans().map(t => cinePagina(t, so)).filter(Boolean).join(QUEBRA);
     if (!paginas){ $("#cineMsg").textContent = "Ninguém na lista pra imprimir."; return; }
     preparaImpressao(paginas); window.print();
   };
+  /* PDF (uma página por van) pra mandar pro tio no WhatsApp ou imprimir */
+  async function cinePdf(vans, bt){
+    const so = $("#cineSoPagos").checked, pags = vans.map(t => cinePagina(t, so)).filter(Boolean);
+    if (!pags.length){ $("#cineMsg").textContent = "Ninguém na lista dessa van."; return; }
+    const txt = bt.textContent; bt.disabled = true; bt.textContent = "Gerando…"; $("#cineMsg").textContent = "Gerando o PDF…";
+    const caixa = document.createElement("div");
+    caixa.style.cssText = "position:absolute;left:0;top:0;width:718px;background:#fff;z-index:-1;pointer-events:none";   // 718px = largura útil da A4 com margem de 10 mm
+    caixa.innerHTML = `<div>${pags.join(QUEBRA)}</div>`;
+    document.body.appendChild(caixa);
+    try {
+      await DT.carregaPdfLib();
+      await Promise.all([...caixa.querySelectorAll("img")].map(i => i.complete ? null : new Promise(r => { i.onload = i.onerror = r; })).filter(Boolean));
+      const y0 = window.scrollY; window.scrollTo(0, 0);   // o gerador fotografa a partir do topo da página
+      let blob;
+      try { blob = await html2pdf().set({margin:[10,10,10,10], image:{type:"jpeg", quality:0.95}, html2canvas:{scale:2, backgroundColor:"#ffffff", scrollX:0, scrollY:0},
+        jsPDF:{unit:"mm", format:"a4", orientation:"portrait"}, pagebreak:{mode:["css","legacy"], avoid:["tr"]}}).from(caixa.firstElementChild).toPdf().output("blob"); }
+      finally { window.scrollTo(0, y0); }
+      const nome = `cinema-28-11-${vans.length === 1 ? vans[0].toLowerCase().replace(/\s+/g, "-") : "todas-as-vans"}.pdf`;
+      const arq = new File([blob], nome, {type: "application/pdf"});
+      if (navigator.canShare && navigator.canShare({files: [arq]})) {
+        try { await navigator.share({files: [arq], title: `Cinema 28/11 – ${vans.length === 1 ? vans[0] : "todas as vans"}`}); $("#cineMsg").textContent = "PDF pronto!"; }
+        catch(e){ if (e.name !== "AbortError") throw e; $("#cineMsg").textContent = ""; }
+      } else {
+        const u = URL.createObjectURL(blob), a = document.createElement("a"); a.href = u; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(u), 4000); $("#cineMsg").textContent = `PDF baixado: ${nome}`;
+      }
+    } catch(e){ $("#cineMsg").textContent = "Não consegui gerar o PDF. Use o 🖨️ Imprimir e escolha “Salvar como PDF”."; }
+    finally { caixa.remove(); bt.disabled = false; bt.textContent = txt; }
+  }
+  $("#cinePdfTodas").onclick = e => cinePdf(cineVans(), e.currentTarget);
   $("#cineCopiar").onclick = async () => {
     const so = $("#cineSoPagos").checked;
     const blocos = cineVans().map(t => cineBlocoTio(t, so)).filter(Boolean);
