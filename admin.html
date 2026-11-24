@@ -98,6 +98,20 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 .cine-achou.nao{background:#fdecec;color:#a3222b}
 .cine-item mark{background:#ffe27a;color:inherit;border-radius:3px;padding:0 1px}
 .cine-item small{color:var(--tinta-2)}
+.cine-grupo{border:2px solid #9fd6b4;background:#f3fbf6;border-radius:14px;padding:12px;display:grid;gap:10px}
+.cine-grupo[open]{display:grid}
+.cine-grupo summary{display:block;cursor:pointer;list-style:none;font-size:16px}
+.cine-grupo summary::-webkit-details-marker{display:none}
+.cine-grupo summary span{font-size:13.5px;color:var(--tinta-2);font-weight:700}
+.cg-passos{margin:0;padding-left:20px;display:grid;gap:6px;font-size:14px}
+.cg-link{display:grid;gap:4px;font-size:13px;font-weight:700}
+.cg-link input{font-size:16px;padding:10px 12px;border:1.5px solid var(--linha);border-radius:10px;background:#fff;width:100%}
+.cg-lista{display:grid;gap:6px}
+.cg-item{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--linha);border-radius:12px;padding:8px 10px;background:#fff;font-size:14px}
+.cg-item small{color:var(--tinta-2)}
+.cg-item a{flex:none;font:700 13px var(--f-corpo);border-radius:999px;padding:8px 12px;background:#1fa855;color:#fff;text-decoration:none;white-space:nowrap}
+.cg-item.foi{background:#eaf7ef;border-color:#9fd6b4}
+.cg-item.foi a{background:#fff;color:#1b6b3a;border:1.5px solid #9fd6b4}
 .cine-troca{grid-column:1/-1;display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:13px;font-weight:700;color:var(--tinta-2)}
 .cine-troca select{flex:1;min-width:0;font:600 14px var(--f-corpo);padding:5px 8px;border:1.5px solid var(--linha);border-radius:10px;background:#fff}
 .cine-item .acoes-c{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
@@ -212,6 +226,21 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
         <button class="btn btn-sec" type="button" id="cineImprimir">🖨️ Imprimir listas por van</button>
         <a class="btn btn-link" href="cinema.html" target="_blank" rel="noopener">Abrir a página do passeio</a>
       </div>
+      <details class="cine-grupo" id="cineGrupo">
+        <summary>👥 <b>Grupo dos pais no WhatsApp</b> <span id="cgResumo"></span></summary>
+        <p class="dica" style="margin:0">O WhatsApp não deixa nenhum app criar grupo sozinho. Faça assim:</p>
+        <ol class="cg-passos">
+          <li>No seu celular: WhatsApp › <b>Nova conversa</b> › <b>Novo grupo</b>. Dê o nome (ex.: <i>Cinema 28/11 – Danni's Tur</i>) e crie só com você ou com os tios.</li>
+          <li>No grupo: toque no nome do grupo › <b>Convidar via link</b> › <b>Copiar link</b>. Cole o link aqui embaixo.</li>
+          <li>Toque em <b>📲 Convidar</b> em cada pai/mãe. Abre a conversa com a mensagem e o link prontos, é só enviar.</li>
+        </ol>
+        <label class="cg-link">Link de convite do grupo<input type="url" id="cgLink" placeholder="https://chat.whatsapp.com/…" autocomplete="off"></label>
+        <div class="cine-bts">
+          <button class="btn btn-sec" type="button" id="cgCopiaNums">Copiar todos os números</button>
+          <button class="btn btn-link" type="button" id="cgZerar">Desmarcar convidados</button>
+        </div>
+        <div id="cgLista" class="cg-lista"></div>
+      </details>
       <div class="busca cine-busca">
         <input type="search" id="cineBusca" placeholder="🔎 Pesquisar criança, pai/mãe ou telefone" autocomplete="off">
       </div>
@@ -733,8 +762,41 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     }
     return out;
   }
+  /* ---------- grupo dos pais do cinema: um convite por responsável (sem repetir quem tem 2+ crianças) ---------- */
+  const CG_LINK = "dt-cine-grupo-link", CG_FOI = "dt-cine-grupo-foi";
+  const cgFoi = () => { try { return JSON.parse(localStorage.getItem(CG_FOI) || "[]"); } catch(e){ return []; } };
+  const cgSalvaFoi = l => { try { localStorage.setItem(CG_FOI, JSON.stringify(l)); } catch(e){} };
+  try { $("#cgLink").value = localStorage.getItem(CG_LINK) || ""; } catch(e){}
+  function cgPais(){
+    const so = $("#cineSoPagos").checked, m = new Map();
+    cine.filter(c => !so || c.pago).forEach(c => {
+      const k = String(c.celular || "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, ""); if (k.length < 10) return;
+      const p = m.get(k) || {k, nome: c.responsavel, fone: c.celular, kids: []};
+      p.kids.push(String(c.crianca || "").split(" ")[0]); m.set(k, p);
+    });
+    return [...m.values()].sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
+  }
+  const cgMsg = (p, link) => `Olá, ${String(p.nome).split(" ")[0]}! 🎬 Criamos o grupo do *Passeio do Cinema* da Danni's Tur (sábado, 28/11) pra passar os avisos do dia (horários, saída e chegada das vans).\n\nEntre no grupo por aqui:\n${link}\n\nQualquer dúvida é só chamar. Obrigado!`;
+  function desenhaGrupo(){
+    const link = $("#cgLink").value.trim(), ok = /^https:\/\/chat\.whatsapp\.com\/\S+$/.test(link), foi = cgFoi(), pais = cgPais();
+    const n = pais.filter(p => foi.includes(p.k)).length;
+    $("#cgResumo").textContent = pais.length ? `· ${n} de ${pais.length} convidados` : "";
+    $("#cgLista").innerHTML = !pais.length ? `<small>Ninguém inscrito${$("#cineSoPagos").checked ? " pago" : ""} ainda.</small>`
+      : !ok ? `<small style="color:#a3222b;font-weight:700">Cole o link de convite do grupo (começa com https://chat.whatsapp.com/) pra aparecerem os botões de convidar.</small>`
+      : pais.map(p => `<div class="cg-item${foi.includes(p.k) ? " foi" : ""}"><span><b>${esc(p.nome)}</b><br><small>${esc(p.fone)} · ${esc(p.kids.join(", "))}</small></span>
+          <a href="${zapLink(p.fone, cgMsg(p, link))}" target="_blank" rel="noopener" data-k="${esc(p.k)}">${foi.includes(p.k) ? "✅ Convidado" : "📲 Convidar"}</a></div>`).join("");
+    $("#cgLista").querySelectorAll("a[data-k]").forEach(a => a.addEventListener("click", () => { const l = cgFoi(); if (!l.includes(a.dataset.k)){ l.push(a.dataset.k); cgSalvaFoi(l); } setTimeout(desenhaGrupo, 300); }));
+  }
+  $("#cgLink").addEventListener("input", () => { try { localStorage.setItem(CG_LINK, $("#cgLink").value.trim()); } catch(e){} desenhaGrupo(); });
+  $("#cgZerar").onclick = () => { if (confirm("Desmarcar todos os convidados?")){ cgSalvaFoi([]); desenhaGrupo(); } };
+  $("#cgCopiaNums").onclick = async () => {
+    const pais = cgPais(); if (!pais.length){ $("#cineMsg").textContent = "Ninguém na lista."; return; }
+    try { await navigator.clipboard.writeText(pais.map(p => `${p.nome} – ${p.fone}`).join("\n")); $("#cineMsg").textContent = `${pais.length} números copiados.`; }
+    catch(e){ $("#cineMsg").textContent = "Não consegui copiar."; }
+    setTimeout(() => { $("#cineMsg").textContent = ""; }, 4000);
+  };
   function desenhaCinema(){
-    desenhaLotacao();
+    desenhaLotacao(); desenhaGrupo();
     const pagos = cine.filter(c => c.pago), so = $("#cineSoPagos").checked, q = $("#cineBusca").value.trim();
     const achados = q ? cine.filter(c => cineBate(c, q)) : [];
     $("#cineAchou").hidden = !q;
