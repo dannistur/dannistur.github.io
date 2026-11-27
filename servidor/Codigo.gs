@@ -768,12 +768,35 @@ function embVans_(){ return embLe_("embarque_vans"); }
 function embSemana_(){ return embLe_("embarque_semana"); }
 function embFam_(){ return embLe_("embarque_fam"); }
 const EMB_CHAVES = {cinema: "embarque_vans", semana: "embarque_semana", fam: "embarque_fam"};
-function embTudo_(){ return {vans: embVans_(), semana: embSemana_(), fam: embFam_()}; }
+function embEventos_(){ return embLe_("embarque_eventos"); }
+function embTudo_(){ return {vans: embVans_(), semana: embSemana_(), fam: embFam_(), eventos: embEventos_()}; }
 function embLimpa_(lista){
   return (Array.isArray(lista) ? lista : []).slice(0, 80)
     .map(a => [limpa_(a && a[0], 60), limpa_(a && a[1], 90), String((a && a[2]) || "").replace(/\D/g, "").slice(0, 13)]).filter(a => a[0]);
 }
+/* listas esporádicas (passeio, evento…): cada uma com nome e uma lista por van */
+function embSalvarEvento_(req){
+  const ev = req.evento || {}, id = String(ev.id || "").replace(/[^a-z0-9]/gi, "").slice(0, 20);
+  if (!id) throw erro_("Lista sem identificação.");
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const v = embEventos_();
+    if (req.apagarEvento){ delete v[id]; }
+    else {
+      const nome = limpa_(ev.nome, 60); if (!nome) throw erro_("Dê um nome pra lista.");
+      const tio = limpa_(req.tio, 40); if (!tio) throw erro_("Van sem nome.");
+      const e = v[id] || {nome, vans: {}, criado: agora_()};
+      e.nome = nome; e.vans = e.vans || {};
+      const l = embLimpa_(req.lista);
+      if (l.length) e.vans[tio] = {l, em: agora_()}; else delete e.vans[tio];
+      v[id] = e;
+    }
+    setCfg_("embarque_eventos", JSON.stringify(v));
+    return Object.assign({ok:true}, embTudo_());
+  } finally { lock.releaseLock(); }
+}
 function embSalvar_(req){
+  if (req.modo === "evento") return embSalvarEvento_(req);
   const tio = limpa_(req.tio, 40); if (!tio) throw erro_("Van sem nome.");
   const modo = EMB_CHAVES[req.modo] ? req.modo : "cinema", chave = EMB_CHAVES[modo], semana = modo !== "cinema";
   const lock = LockService.getScriptLock(); lock.waitLock(20000);

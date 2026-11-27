@@ -25,16 +25,30 @@
     cinema: {aba: "🎬 Cinema", titulo: "Passeio do Cinema · 28/11", semanal: false,
              dica: "Toque na <b>foto do motorista</b> pra abrir a lista do cinema. Verde = falta pegar; pegou, toca e fica <b style=\"color:#d93025\">vermelho</b>."}
   };
-  let listas = {semana: {}, fam: {}, cinema: {}}, modo = "semana", editando = null, edDia = "seg", rascunho = {}, familias = [];
-  try { const m = localStorage.getItem("dt-emb-modo"); if (MODOS[m]) modo = m; } catch(e){}
-  const deServidor = r => ({semana: (r && r.semana) || {}, fam: (r && r.fam) || {}, cinema: (r && r.vans) || {}});
+  let listas = {semana: {}, fam: {}, cinema: {}, eventos: {}}, modo = "semana", editando = null, edDia = "seg", rascunho = {}, familias = [];
+  try { const m = localStorage.getItem("dt-emb-modo"); if (m) modo = m; } catch(e){}
+  const novosLocais = {};                                   // listas novas que ainda não têm nenhuma van salva
+  const deServidor = r => ({semana: (r && r.semana) || {}, fam: (r && r.fam) || {}, cinema: (r && r.vans) || {}, eventos: Object.assign({}, novosLocais, (r && r.eventos) || {})});
+  const evId = m => /^ev:/.test(m) ? m.slice(3) : "";
+  function info(m){
+    if (MODOS[m]) return MODOS[m];
+    const e = listas.eventos[evId(m)];
+    return e ? {aba: "📋 " + e.nome, titulo: e.nome, semanal: false, evento: true,
+                dica: `Lista <b>${esc(e.nome)}</b>. Toque em <b>✏️</b> na van pra montar a lista dela; depois é só tocar na foto pra abrir.`} : null;
+  }
+  let carregado = false;
+  const garanteModo = () => { if (carregado && !info(modo)) modo = "semana"; };
 
   /* ---------- cartão ---------- */
   const card = document.createElement(MOT ? "section" : "details");
   card.className = "card emb-adm" + (MOT ? " emb-mot-pg" : ""); card.id = "embarque"; if (!MOT) card.open = true;
   card.innerHTML = `
     ${MOT ? "" : `<summary><h3>🚐 Lista de embarque</h3><span id="embResumo">carregando…</span></summary>`}
-    <div class="emb-abas" role="tablist">${Object.entries(MODOS).map(([k, m]) => `<button type="button" role="tab" data-m="${k}">${m.aba}</button>`).join("")}</div>
+    <div class="emb-abas" role="tablist" id="embAbas"></div>
+    <form class="emb-nova" id="embNova" hidden>
+      <input type="text" id="embNovaNome" maxlength="60" placeholder="Nome da lista (ex.: Passeio do zoológico 05/12)" autocomplete="off">
+      <button class="btn btn-pri" type="submit">Criar</button><button class="btn btn-link" type="button" id="embNovaX">Cancelar</button>
+    </form>
     <p class="dica" id="embDica" style="margin:0"></p>
     <div class="emb-fotos" id="embFotos"></div>
     <div class="emb-ed" id="embEd" hidden>
@@ -51,6 +65,7 @@
       <p class="msg-err" id="embErr" role="alert"></p>
     </div>
     <p class="ok-msg" id="embOk" role="status"></p>
+    ${MOT ? "" : `<button class="btn btn-link emb-apaga" type="button" id="embApaga" hidden>🗑️ Apagar esta lista</button>`}
     ${MOT ? "" : `<div class="emb-mot">
       <b>🔑 Área dos motoristas</b>
       <p class="emb-ajuda" style="margin:0">Daniel, Joyce, Luiz e Cíntia entram em <a href="motorista.html" target="_blank" rel="noopener">⋮ › Área dos motoristas</a> com uma senha só deles. Lá eles veem e editam <b>só as listas</b>, nada do resto da Área Danni's. Entram uma vez e ficam conectados. Trocar a senha desconecta todo mundo.</p>
@@ -62,14 +77,21 @@
 
   const css = document.createElement("style");
   css.textContent = `
-    .emb-adm{display:grid;gap:12px;border:2px solid #9fd6b4}
+    .emb-adm{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;border:2px solid #9fd6b4;min-width:0;max-width:100%}
     .emb-mot-pg{border:0;box-shadow:none;background:transparent;padding:0}
     .emb-adm summary{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;list-style:none}
     .emb-adm summary::-webkit-details-marker{display:none}
     .emb-adm summary h3{font-size:19px;margin:0}
     .emb-adm summary span{font-size:13.5px;color:var(--tinta-2);font-weight:700;text-align:right}
-    .emb-abas{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#f3e8f3;border-radius:14px;padding:4px}
-    .emb-abas button{font:800 14px/1.15 var(--f-corpo);border:0;border-radius:11px;padding:10px 4px;background:transparent;color:var(--roxo);cursor:pointer}
+    .emb-abas{display:flex;min-width:0;max-width:100%;gap:4px;background:#f3e8f3;border-radius:14px;padding:4px;overflow-x:auto;scrollbar-width:none}
+    .emb-abas::-webkit-scrollbar{display:none}
+    .emb-abas button{flex:none;font:800 14px/1.15 var(--f-corpo);border:0;border-radius:11px;padding:10px 12px;background:transparent;color:var(--roxo);cursor:pointer;white-space:nowrap}
+    .emb-abas .nova{border:1.5px dashed var(--roxo);background:#fff}
+    .emb-nova{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .emb-nova[hidden]{display:none}
+    .emb-nova input{flex:1;min-width:200px;font:16px var(--f-corpo);padding:10px 12px;border:1.5px solid var(--roxo);border-radius:12px}
+    .emb-apaga{justify-self:start;color:#b3261e}
+    .emb-apaga[hidden]{display:none}
     .emb-abas button[aria-selected="true"]{background:#fff;color:var(--roxo);box-shadow:0 2px 0 rgba(0,0,0,.08)}
     .emb-fotos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
     @media (max-width:420px){.emb-fotos{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -108,14 +130,14 @@
   /* ---------- link da tela de embarque (a lista vai dentro do link, depois do #) ---------- */
   const b64 = obj => { const bytes = new TextEncoder().encode(JSON.stringify(obj)); let bin = ""; bytes.forEach(b => bin += String.fromCharCode(b)); return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
   const base = () => new URL("embarque.html", location.href).href;
-  const doModo = () => listas[modo] || {};
+  const doModo = () => evId(modo) ? ((listas.eventos[evId(modo)] || {}).vans || {}) : (listas[modo] || {});
   const qtd = van => {
     const v = doModo()[van.nome]; if (!v) return 0;
-    if (!MODOS[modo].semanal) return (v.l || []).length;
+    if (!info(modo).semanal) return (v.l || []).length;
     return new Set(Object.values(v.dias || {}).flat().map(a => a[0] + "|" + a[1])).size;
   };
   function linkDe(van){
-    const v = doModo()[van.nome], m = MODOS[modo], suf = MOT ? "&m=1" : "";
+    const v = doModo()[van.nome], m = info(modo), suf = MOT ? "&m=1" : "";
     if (!v) return "";
     if (!m.semanal){
       if (!v.l || !v.l.length) return "";
@@ -129,15 +151,25 @@
     return base() + "#d=" + b64({t: van.nome, e: m.titulo, k, d}) + suf;
   }
 
+  function desenhaAbas(){
+    const evs = Object.entries(listas.eventos).sort((a, b) => String(b[1].criado || "~").localeCompare(String(a[1].criado || "~")));
+    $("#embAbas").innerHTML = Object.entries(MODOS).map(([k, m]) => `<button type="button" role="tab" data-m="${k}" aria-selected="${k === modo}">${m.aba}</button>`).join("")
+      + evs.map(([id, e]) => `<button type="button" role="tab" data-m="ev:${esc(id)}" aria-selected="${"ev:" + id === modo}">📋 ${esc(e.nome)}</button>`).join("")
+      + `<button type="button" class="nova" data-nova="1">+ Nova lista</button>`;
+    const sel = $("#embAbas [aria-selected=true]"), A = $("#embAbas");   // rola só a fileira de abas, não a página
+    if (sel && (sel.offsetLeft < A.scrollLeft || sel.offsetLeft + sel.offsetWidth > A.scrollLeft + A.clientWidth)) A.scrollLeft = sel.offsetLeft - 8;
+  }
   function desenha(){
-    card.querySelectorAll(".emb-abas button").forEach(b => b.setAttribute("aria-selected", b.dataset.m === modo));
-    $("#embDica").innerHTML = MODOS[modo].dica + (MOT ? " Pra pôr ou tirar alguém, toque em <b>✏️ Editar</b>." : "");
+    garanteModo(); desenhaAbas();
+    if (!info(modo)){ $("#embFotos").innerHTML = ""; $("#embDica").textContent = "Carregando…"; return; }   // lista criada antes: espera o servidor
+    if (!MOT) $("#embApaga").hidden = !info(modo).evento;
+    $("#embDica").innerHTML = info(modo).dica + (MOT ? " Pra pôr ou tirar alguém, toque em <b>✏️ Editar</b>." : "");
     if (!MOT){
       const tot = VANS.reduce((t, v) => t + qtd(v), 0), com = VANS.filter(v => qtd(v)).length;
-      $("#embResumo").textContent = tot ? `${tot} ${modo === "fam" ? "pessoas" : "crianças"} · ${com} de ${VANS.length} vans` : "nenhuma lista ainda";
+      $("#embResumo").textContent = tot ? `${tot} ${modo === "fam" || evId(modo) ? (tot === 1 ? "pessoa" : "pessoas") : (tot === 1 ? "criança" : "crianças")} · ${com} de ${VANS.length} vans` : "nenhuma lista ainda";
     }
     $("#embFotos").innerHTML = VANS.map((v, i) => {
-      const n = qtd(v), link = linkDe(v), m = MODOS[modo];
+      const n = qtd(v), link = linkDe(v), m = info(modo);
       const msg = `🚐 ${m.titulo} (${v.nome}).\nAbra${m.semanal ? " todo dia: as setas ‹ › trocam o dia" : ""}. Pegou, toque no nome: fica vermelho. Tocou errado? Toque de novo.\n\n${link}`;
       return `<div class="emb-tio">
         <a class="emb-foto${n ? "" : " vazio"}" data-i="${i}" href="${link || "#"}" aria-label="${n ? `Abrir a lista da van ${esc(v.nome)} (${n})` : `Montar a lista da van ${esc(v.nome)}`}">
@@ -147,10 +179,30 @@
       </div>`;
     }).join("");
   }
-  card.querySelectorAll(".emb-abas button").forEach(b => b.onclick = () => {
-    modo = b.dataset.m; try { localStorage.setItem("dt-emb-modo", modo); } catch(e){}
-    $("#embEd").hidden = true; editando = null; $("#embOk").textContent = ""; desenha();
+  const trocaModo = m => { modo = m; try { localStorage.setItem("dt-emb-modo", modo); } catch(e){} $("#embEd").hidden = true; editando = null; $("#embOk").textContent = ""; desenha(); };
+  $("#embAbas").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.nova){ $("#embNova").hidden = false; $("#embNovaNome").value = ""; $("#embNovaNome").focus(); return; }
+    trocaModo(b.dataset.m);
   });
+  $("#embNovaX").onclick = () => { $("#embNova").hidden = true; };
+  $("#embNova").addEventListener("submit", e => {
+    e.preventDefault();
+    const nome = $("#embNovaNome").value.trim().replace(/\s+/g, " ");
+    if (!nome){ $("#embNovaNome").focus(); return; }
+    const id = Date.now().toString(36);
+    novosLocais[id] = {nome, vans: {}, criado: new Date().toISOString()}; listas.eventos[id] = novosLocais[id];
+    $("#embNova").hidden = true; trocaModo("ev:" + id);
+    $("#embOk").textContent = `✅ Lista "${nome}" criada. Agora toque em ✏️ na van pra pôr os nomes e salvar.`;
+  });
+  if (!MOT) $("#embApaga").onclick = async () => {
+    const id = evId(modo), e = listas.eventos[id]; if (!e) return;
+    if (!confirm(`Apagar a lista "${e.nome}" de todas as vans? Não dá pra desfazer.`)) return;
+    delete novosLocais[id];
+    try { const r = await api("admin_embarque_salvar", {senha: window.__dtSenha, modo: "evento", evento: {id}, apagarEvento: true}); listas = deServidor(r); }
+    catch(err){ delete listas.eventos[id]; }
+    trocaModo("semana"); $("#embOk").textContent = `Lista "${e.nome}" apagada.`;
+  };
 
   /* ---------- editar ---------- */
   const paraTexto = l => (l || []).map(a => [a[0], a[1]].filter(Boolean).join(" - ") + (a[2] ? " - " + a[2] : "")).join("\n");
@@ -162,7 +214,7 @@
       return [p.shift() || "", p.join(" · "), tel];
     }).filter(a => a[0]);
   }
-  const semanal = () => MODOS[modo].semanal;
+  const semanal = () => info(modo).semanal;
   function desenhaDias(){
     $("#embDias").hidden = !semanal(); $("#embCopia").hidden = !semanal();
     if (!semanal()) return;
@@ -174,7 +226,7 @@
     const v = doModo()[editando.nome] || {};
     if (semanal()) DIAS.forEach(([d]) => rascunho[d] = paraTexto((v.dias || {})[d]));
     $("#embEd").hidden = false; $("#embErr").textContent = ""; $("#embOk").textContent = "";
-    $("#embEdTit").textContent = `${MODOS[modo].aba} – van ${editando.nome}`;
+    $("#embEdTit").textContent = `${info(modo).aba} – van ${editando.nome}`;
     $("#embTxt").value = semanal() ? rascunho.seg : paraTexto(v.l);
     desenhaDias();
     $("#embEd").scrollIntoView({behavior: "smooth", block: "start"}); $("#embTxt").focus({preventScroll: true});
@@ -218,12 +270,14 @@
     if (!editando) return;
     const b = $("#embSalvar"), txt = b.textContent;
     let req, n;
-    if (!semanal()){ const l = deTexto($("#embTxt").value); n = l.length; req = {modo, tio: editando.nome, lista: l}; }
+    if (!semanal()){ const l = deTexto($("#embTxt").value); n = l.length;
+      req = evId(modo) ? {modo: "evento", evento: {id: evId(modo), nome: info(modo).titulo}, tio: editando.nome, lista: l} : {modo, tio: editando.nome, lista: l}; }
     else { rascunho[edDia] = $("#embTxt").value; const dias = {}; DIAS.forEach(([d]) => dias[d] = deTexto(rascunho[d])); n = Object.values(dias).reduce((t, l) => t + l.length, 0); req = {modo, tio: editando.nome, dias}; }
     if (!n && !confirm(`Apagar a lista da van ${editando.nome}?`)) return;
     b.disabled = true; b.textContent = "Salvando…"; $("#embErr").textContent = "";
     try {
       const r = MOT ? await MOT.salvar(req) : await api("admin_embarque_salvar", {senha: window.__dtSenha, ...req});
+      if (evId(modo)) delete novosLocais[evId(modo)];
       listas = deServidor(r); desenha();
       $("#embEd").hidden = true;
       $("#embOk").textContent = n ? `✅ Lista da van ${editando.nome} salva. Toque na foto pra abrir.` : `Lista da van ${editando.nome} apagada.`;
@@ -250,10 +304,11 @@
       const r = MOT ? await MOT.carregar() : await api("admin_embarque", {senha: window.__dtSenha});
       listas = deServidor(r); motStatus(!!(r && r.temSenhaMot));
     } catch(e){ if (!MOT) $("#embResumo").textContent = "não consegui carregar"; }
+    carregado = true;
     desenha();
     if (!MOT && /^#embarque\b/.test(location.hash)){ card.open = true; setTimeout(() => card.scrollIntoView({behavior: "smooth", block: "start"}), 150); }
   }
-  if (MOT){ MOT.mostrar = dados => { listas = deServidor(dados); desenha(); }; MOT.recarregar = carrega; }
+  if (MOT){ MOT.mostrar = dados => { listas = deServidor(dados); carregado = true; desenha(); }; MOT.recarregar = carrega; }
   else {
     let jaCarregou = false;
     window.addEventListener("dt-lista", e => { familias = (e.detail && e.detail.familias) || []; if (!jaCarregou){ jaCarregou = true; carrega(); } });

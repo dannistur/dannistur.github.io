@@ -68,8 +68,10 @@
   .acoes-a{flex:none;display:flex;gap:6px}
   main.c2 .acoes-a,main.c3 .acoes-a{position:absolute;top:8px;right:8px;gap:4px}
   main.c2 .acoes-a .tel,main.c3 .acoes-a .tel,main.c2 .acoes-a .falta,main.c3 .acoes-a .falta{position:static}
-  .falta{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#fff;font-size:19px;cursor:pointer}
-  main.c2 .falta,main.c3 .falta{width:32px;height:32px;font-size:14px}
+  .falta{display:inline-flex;align-items:center;height:36px;padding:0 12px;border-radius:999px;background:#fff;color:#5b4d5e;font:800 13px Figtree,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+  main.c2 .falta,main.c3 .falta{height:26px;padding:0 8px;font-size:10.5px}
+  .aluno.naovai .falta{background:#1fa855;color:#fff}
+  .dia-atual .prox{display:block;font:800 11px Figtree,system-ui,sans-serif;color:#ffd23f;letter-spacing:.06em;text-transform:uppercase}
   .fundo-dlg{position:fixed;inset:0;z-index:5;background:rgba(30,10,35,.55);display:grid;place-items:end center;padding:16px}
   .dlg{width:min(100%,460px);background:#fff;border-radius:22px;padding:18px 16px 16px;display:grid;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
   .dlg h2{margin:0;font:800 22px/1.15 Kanit,system-ui,sans-serif}
@@ -139,21 +141,27 @@
   const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const hoje = new Date(); hoje.setHours(12, 0, 0, 0);
   const dow = hoje.getDay();                                     // 0 dom … 6 sáb
-  const segunda = new Date(hoje); segunda.setDate(hoje.getDate() + (dow === 0 ? 1 : dow === 6 ? 2 : 1 - dow));
-  const dataDo = i => { const d = new Date(segunda); d.setDate(segunda.getDate() + i); return d; };
+  /* duas semanas na tela: esta (posições 0–4) e a próxima (5–9). No domingo a semana que passou some e a próxima vira "esta". */
+  const seg0 = new Date(hoje); seg0.setDate(hoje.getDate() + (dow === 0 ? 1 : 1 - dow));   // sábado ainda é esta semana; domingo já é a próxima
+  const segDa = w => { const d = new Date(seg0); d.setDate(seg0.getDate() + 7 * w); return d; };
+  const dataDo = p => { const d = new Date(seg0); d.setDate(seg0.getDate() + Math.floor(p / 5) * 7 + p % 5); return d; };
   const diasComLista = SEMANA ? DIAS.map((d, i) => i).filter(i => (dados.d[DIAS[i][0]] || []).length) : [];
-  let diaI = SEMANA ? (dow >= 1 && dow <= 5 && diasComLista.includes(dow - 1) ? dow - 1 : (diasComLista[0] || 0)) : 0;
+  const posicoes = SEMANA ? [0, 1].flatMap(w => diasComLista.map(d => w * 5 + d)) : [];
+  let pos = !SEMANA ? 0 : (dow >= 1 && dow <= 5 && diasComLista.includes(dow - 1)) ? dow - 1
+          : dow === 6 ? (diasComLista[diasComLista.length - 1] || 0) : (diasComLista[0] || 0);
+  const sem = () => SEMANA ? Math.floor(pos / 5) : 0;
 
   /* o que fica guardado neste celular */
   const PREF = SEMANA ? `dt-emb-sem-${hash([dados.t, dados.k.map(a => a[0])])}-` : "";
-  const CHAVE = SEMANA ? PREF + iso(segunda) : "dt-embarque-" + hash([dados.t, dados.e, dados.l.map(a => a[0])]);
-  let est = ls.get(CHAVE, SEMANA ? {p: {}, f: {}} : []);
-  if (SEMANA){                                                  // limpa semanas velhas desta van
-    try { Object.keys(localStorage).filter(k => k.startsWith(PREF) && k !== CHAVE).forEach(k => localStorage.removeItem(k)); } catch(e){}
-    est.p = est.p || {}; est.f = est.f || {};
+  const CHAVES = SEMANA ? [PREF + iso(segDa(0)), PREF + iso(segDa(1))] : ["dt-embarque-" + hash([dados.t, dados.e, dados.l.map(a => a[0])])];
+  const ests = CHAVES.map(k => ls.get(k, SEMANA ? {p: {}, f: {}} : []));
+  if (SEMANA){                                                  // apaga as semanas que já passaram desta van
+    try { Object.keys(localStorage).filter(k => k.startsWith(PREF) && k.slice(PREF.length) < iso(segDa(0))).forEach(k => localStorage.removeItem(k)); } catch(e){}
+    ests.forEach(e => { e.p = e.p || {}; e.f = e.f || {}; });
   }
-  const salva = () => ls.set(CHAVE, est);
-  const diaK = () => DIAS[diaI][0];
+  let est = ests[sem()];
+  const salva = () => { ests[sem()] = est; ls.set(CHAVES[sem()], est); };
+  const diaK = () => DIAS[pos % 5][0];
   const pegosDia = () => new Set(SEMANA ? (est.p[diaK()] || []) : est);
   const naoVai = i => SEMANA && (est.f[i] || []).includes(diaK());
   const listaDia = () => SEMANA ? (dados.d[diaK()] || []).map(i => ({i, a: dados.k[i]})) : dados.l.map((a, i) => ({i, a: [a[0], [a[1], a[2]].filter(Boolean).join(" · "), a[3]]}));
@@ -166,10 +174,10 @@
     $("#barra").style.width = vao.length ? (p / vao.length * 100) + "%" : "0";
     if (SEMANA){
       $("#dias").hidden = false;
-      const d = dataDo(diaI);
-      $("#diaNome").textContent = `${DIAS[diaI][1]} · ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-      $("#bolinhas").innerHTML = DIAS.map(([k, n], i) => `<button type="button" data-dia="${i}" aria-current="${i === diaI}"${diasComLista.includes(i) ? "" : " disabled"}>${n.slice(0, 3).toUpperCase()}</button>`).join("");
-      $("#antes").disabled = !diasComLista.some(i => i < diaI); $("#depois").disabled = !diasComLista.some(i => i > diaI);
+      const d = dataDo(pos), w = sem();
+      $("#diaNome").innerHTML = `${DIAS[pos % 5][1]} · ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}${w ? `<small class="prox">próxima semana</small>` : ""}`;
+      $("#bolinhas").innerHTML = DIAS.map(([k, n], i) => `<button type="button" data-dia="${w * 5 + i}" aria-current="${w * 5 + i === pos}"${diasComLista.includes(i) ? "" : " disabled"}>${n.slice(0, 3).toUpperCase()}</button>`).join("");
+      $("#antes").disabled = !posicoes.some(p => p < pos); $("#depois").disabled = !posicoes.some(p => p > pos);
     }
     $("#lista").innerHTML = (!lista.length ? `<div class="vazio">Ninguém na lista deste dia.</div>` : "")
       + (p === vao.length && vao.length ? `<div class="pronto">🎉 Todos pegos!${SEMANA ? "" : " Bora pro cinema!"}</div>` : "")
@@ -177,8 +185,8 @@
         const [nome, ref, tel] = x.a, foi = pegos.has(x.i), nv = naoVai(x.i);
         return `<button type="button" class="aluno${nv ? " naovai" : foi ? " pegou" : ""}" data-i="${x.i}" aria-pressed="${foi}">
           <span class="num">${pos + 1}</span>
-          <span class="txt"><span class="nome">${esc(nome)}</span><span class="esc">${esc(ref)}</span><span class="estado">${nv ? "🚫 NÃO VAI" : foi ? "🔴 PEGOU ✔" : "🟢 FALTA PEGAR"}</span></span>
-          <span class="acoes-a">${SEMANA ? `<span class="falta" role="button" tabindex="0" data-f="${x.i}" title="Marcar dias que não vai" aria-label="Marcar dias que ${esc(nome)} não vai">🚫</span>` : ""}${tel ? `<a class="tel" href="tel:+55${esc(tel)}" title="Ligar pro responsável" aria-label="Ligar pro responsável de ${esc(nome)}">📞</a>` : ""}</span>
+          <span class="txt"><span class="nome">${esc(nome)}</span><span class="esc">${esc(ref)}</span><span class="estado">${nv ? "NÃO VAI" : foi ? "🔴 PEGOU ✔" : "🟢 FALTA PEGAR"}</span></span>
+          <span class="acoes-a">${SEMANA ? `<span class="falta" role="button" tabindex="0" data-f="${x.i}" aria-label="Marcar dias que ${esc(nome)} não vai">Não vai</span>` : ""}${tel ? `<a class="tel" href="tel:+55${esc(tel)}" title="Ligar pro responsável" aria-label="Ligar pro responsável de ${esc(nome)}">📞</a>` : ""}</span>
         </button>`;
       }).join("");
   }
@@ -189,19 +197,19 @@
     const i = +b.dataset.i;
     if (naoVai(i)){ abreFalta(i); return; }                     // cinza: abre pra desmarcar, se precisar
     if (SEMANA){ const s = new Set(est.p[diaK()] || []); s.has(i) ? s.delete(i) : s.add(i); est.p[diaK()] = [...s]; }
-    else { const s = new Set(est); s.has(i) ? s.delete(i) : s.add(i); est = [...s]; }
+    else { const s = new Set(est); s.has(i) ? s.delete(i) : s.add(i); est = [...s]; }   // salva() guarda em ests[0]
     salva(); desenha();
     if (navigator.vibrate) navigator.vibrate(30);
   });
 
-  /* ---------- 🚫 não vai (dias desta semana) ---------- */
+  /* ---------- "Não vai" (dias da semana que está na tela) ---------- */
   function abreFalta(i){
     const nome = dados.k[i][0], marcados = new Set(est.f[i] || []);
     const temDia = k => (dados.d[k] || []).includes(i);
     const fundo = document.createElement("div"); fundo.className = "fundo-dlg";
     fundo.innerHTML = `<div class="dlg" role="dialog" aria-modal="true" aria-label="Dias que ${esc(nome)} não vai">
-      <h2>🚫 ${esc(nome)} não vai em:</h2>
-      <p>Toque nos dias desta semana. No domingo zera sozinho.</p>
+      <h2>${esc(nome)} não vai em:</h2>
+      <p>${sem() ? "Próxima semana" : "Esta semana"} (${String(segDa(sem()).getDate()).padStart(2, "0")}/${String(segDa(sem()).getMonth() + 1).padStart(2, "0")} a ${String(dataDo(sem() * 5 + 4).getDate()).padStart(2, "0")}/${String(dataDo(sem() * 5 + 4).getMonth() + 1).padStart(2, "0")}). No domingo a semana que passou é apagada.</p>
       <div class="chips">${DIAS.map(([k, n]) => `<button type="button" data-k="${k}" aria-pressed="${marcados.has(k)}"${temDia(k) ? "" : " disabled"}>${n.slice(0, 3).toUpperCase()}</button>`).join("")}</div>
       <div class="bts"><button type="button" data-x>Cancelar</button><button type="button" class="ok" data-ok>Salvar</button></div>
     </div>`;
@@ -219,8 +227,8 @@
   }
 
   /* ---------- trocar o dia: setas, bolinhas ou deslizar o dedo ---------- */
-  const vaiPara = i => { if (!diasComLista.includes(i) || i === diaI) return; diaI = i; desenha(); window.scrollTo({top: 0}); };
-  const passo = dir => { const prox = dir > 0 ? diasComLista.find(i => i > diaI) : [...diasComLista].reverse().find(i => i < diaI); if (prox != null) vaiPara(prox); };
+  const vaiPara = p => { if (!posicoes.includes(p) || p === pos) return; pos = p; est = ests[sem()]; desenha(); window.scrollTo({top: 0}); };
+  const passo = dir => { const prox = dir > 0 ? posicoes.find(p => p > pos) : [...posicoes].reverse().find(p => p < pos); if (prox != null) vaiPara(prox); };
   if (SEMANA){
     $("#antes").onclick = () => passo(-1); $("#depois").onclick = () => passo(1);
     $("#bolinhas").addEventListener("click", e => { const b = e.target.closest("[data-dia]"); if (b) vaiPara(+b.dataset.dia); });
@@ -231,12 +239,12 @@
   }
 
   /* quantas colunas (fica guardado neste celular) */
-  let cols = 2; try { cols = +localStorage.getItem("dt-embarque-cols") || 2; } catch(e){}
-  const poeCols = c => { cols = c; $("#lista").className = "c" + c; document.querySelectorAll(".cols button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.c === c)); try { localStorage.setItem("dt-embarque-cols", c); } catch(e){} };
+  let cols = 3; try { cols = +localStorage.getItem("dt-emb-colunas") || 3; } catch(e){}
+  const poeCols = c => { cols = c; $("#lista").className = "c" + c; document.querySelectorAll(".cols button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.c === c)); try { localStorage.setItem("dt-emb-colunas", c); } catch(e){} };
   document.querySelectorAll(".cols button").forEach(b => b.onclick = () => poeCols(+b.dataset.c));
   poeCols(cols);
   $("#recomecar").onclick = () => {
-    if (!confirm(SEMANA ? `Deixar todo mundo verde de novo em ${DIAS[diaI][1]}? (ex.: pra volta) — quem não vai continua marcado.` : "Deixar todo mundo verde de novo? (ex.: pra volta)")) return;
+    if (!confirm(SEMANA ? `Deixar todo mundo verde de novo em ${DIAS[pos % 5][1]}? (ex.: pra volta) — quem não vai continua marcado.` : "Deixar todo mundo verde de novo? (ex.: pra volta)")) return;
     if (SEMANA) est.p[diaK()] = []; else est = [];
     salva(); desenha();
   };
