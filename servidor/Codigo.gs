@@ -43,9 +43,10 @@ function doPost(e){
       case "cinema_inscrever": return json_(cineInscrever_(req.dados));
       case "cinema_vagas":     return json_(cineVagas_());
       case "admin_cinema":     admin_(req); return json_(cineLista_());
-      case "admin_embarque":   admin_(req); return json_({ok:true, vans: embVans_(), semana: embSemana_(), temSenhaMot: !!cfg_("mot_senha_hash")});
+      case "admin_embarque":   admin_(req); return json_(Object.assign({ok:true, temSenhaMot: !!cfg_("mot_senha_hash")}, embTudo_()));
       case "admin_mot_senha":  admin_(req); return json_(motDefineSenha_(req));
       case "mot_listas":       return json_(motListas_(req));
+      case "mot_salvar":       motConfere_(req); return json_(embSalvar_(req));
       case "admin_embarque_salvar": admin_(req); return json_(embSalvar_(req));
       case "admin_cinema_pago": admin_(req); return json_(cineMarca_(req, "pago"));
       case "admin_cinema_cancelar": admin_(req); return json_(cineMarca_(req, "cancelado"));
@@ -765,13 +766,16 @@ function embLe_(k){
 }
 function embVans_(){ return embLe_("embarque_vans"); }
 function embSemana_(){ return embLe_("embarque_semana"); }
+function embFam_(){ return embLe_("embarque_fam"); }
+const EMB_CHAVES = {cinema: "embarque_vans", semana: "embarque_semana", fam: "embarque_fam"};
+function embTudo_(){ return {vans: embVans_(), semana: embSemana_(), fam: embFam_()}; }
 function embLimpa_(lista){
   return (Array.isArray(lista) ? lista : []).slice(0, 80)
     .map(a => [limpa_(a && a[0], 60), limpa_(a && a[1], 90), String((a && a[2]) || "").replace(/\D/g, "").slice(0, 13)]).filter(a => a[0]);
 }
 function embSalvar_(req){
   const tio = limpa_(req.tio, 40); if (!tio) throw erro_("Van sem nome.");
-  const semana = req.modo === "semana", chave = semana ? "embarque_semana" : "embarque_vans";
+  const modo = EMB_CHAVES[req.modo] ? req.modo : "cinema", chave = EMB_CHAVES[modo], semana = modo !== "cinema";
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     const v = embLe_(chave);
@@ -783,7 +787,7 @@ function embSalvar_(req){
       if (l.length) v[tio] = {l, em: agora_()}; else delete v[tio];
     }
     setCfg_(chave, JSON.stringify(v));
-    return {ok:true, vans: embVans_(), semana: embSemana_()};
+    return Object.assign({ok:true}, embTudo_());
   } finally { lock.releaseLock(); }
 }
 /* ===================== Área dos motoristas =====================
@@ -793,12 +797,12 @@ function motHash_(s){
   return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, "dt-mot|" + String(s || "").trim().toLowerCase(), Utilities.Charset.UTF_8)
     .map(b => ((b + 256) % 256).toString(16).padStart(2, "0")).join("");
 }
-function motListas_(req){
+function motConfere_(req){
   const h = cfg_("mot_senha_hash");
   if (!h) throw erro_("A Danni's ainda não criou a senha dos motoristas.", "sem_senha");
   if (motHash_(req.senha) !== h){ Utilities.sleep(1200); throw erro_("Senha errada.", "senha"); }
-  return {ok:true, vans: embVans_(), semana: embSemana_()};
 }
+function motListas_(req){ motConfere_(req); return Object.assign({ok:true}, embTudo_()); }
 function motDefineSenha_(req){
   const s = String(req.nova || "").trim();
   if (s.length < 4) throw erro_("A senha dos motoristas precisa ter pelo menos 4 letras ou números.");
