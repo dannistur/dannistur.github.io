@@ -69,26 +69,15 @@
   .bolinhas{display:flex;justify-content:center;gap:5px;margin-top:5px}
   .bolinhas button{border:0;border-radius:999px;padding:3px 8px;font:800 11px Figtree,system-ui,sans-serif;background:rgba(255,255,255,.18);color:#fff;cursor:pointer}
   .bolinhas button[aria-current="true"]{background:#ffd23f;color:var(--roxo)}
-  .aluno.naovai{background:#9a8f9a;box-shadow:0 6px 0 #6f646f}
+  .aluno.naovai{background:var(--verm);box-shadow:0 6px 0 var(--verm-esc)}
   .aluno.naovai .nome{text-decoration:line-through;text-decoration-thickness:3px}
   .acoes-a{flex:none;display:flex;gap:6px}
   main.c2 .acoes-a,main.c3 .acoes-a{position:absolute;top:8px;right:8px;gap:4px}
   main.c2 .acoes-a .tel,main.c3 .acoes-a .tel,main.c2 .acoes-a .falta,main.c3 .acoes-a .falta{position:static}
   .falta{display:inline-flex;align-items:center;height:36px;padding:0 12px;border-radius:999px;background:#fff;color:#5b4d5e;font:800 13px Figtree,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
   main.c2 .falta,main.c3 .falta{height:26px;padding:0 8px;font-size:10.5px}
-  .aluno.naovai .falta{background:#1fa855;color:#fff}
+  .aluno.naovai .falta{background:#fff;color:var(--verm)}
   .dia-atual .prox{display:block;font:800 11px Figtree,system-ui,sans-serif;color:#ffd23f;letter-spacing:.06em;text-transform:uppercase}
-  .fundo-dlg{position:fixed;inset:0;z-index:5;background:rgba(30,10,35,.55);display:grid;place-items:end center;padding:16px}
-  .dlg{width:min(100%,460px);background:#fff;border-radius:22px;padding:18px 16px 16px;display:grid;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
-  .dlg h2{margin:0;font:800 22px/1.15 Kanit,system-ui,sans-serif}
-  .dlg p{margin:0;font-size:15px;color:#5b4d5e}
-  .dlg .chips{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-  .dlg .chips button{border:2px solid #cbbccb;border-radius:14px;padding:12px 0;background:#fff;font:800 15px Figtree,system-ui,sans-serif;color:var(--tinta);cursor:pointer}
-  .dlg .chips button[aria-pressed="true"]{background:#9a8f9a;border-color:#6f646f;color:#fff}
-  .dlg .chips button:disabled{opacity:.3}
-  .dlg .bts{display:flex;gap:8px;justify-content:flex-end}
-  .dlg .bts button{font:800 16px Figtree,system-ui,sans-serif;border-radius:999px;padding:12px 18px;border:2px solid var(--roxo);background:#fff;color:var(--roxo);cursor:pointer}
-  .dlg .bts .ok{background:var(--roxo);color:#fff}
   .pronto{grid-column:1/-1;background:#fff8d6;border:2px solid #f0c419;border-radius:20px;padding:14px 16px;text-align:center;font:800 20px Kanit,system-ui,sans-serif}
 </style>
 </head>
@@ -126,6 +115,7 @@
     const bin = atob(b.replace(/-/g, "+").replace(/_/g, "/"));
     dados = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
   } catch(e){}
+  window.addEventListener("hashchange", () => location.reload());   // abriu outra lista com esta aberta: carrega a nova
   const SEMANA = !!(dados && dados.k && dados.d);
   if (!dados || !(Array.isArray(dados.l) || SEMANA)){
     $("#lista").innerHTML = `<div class="vazio">Link incompleto 😕<br><small>Peça o link da lista de embarque de novo pra Danni's Tur.</small></div>`;
@@ -161,16 +151,17 @@
   /* o que fica guardado neste celular */
   const PREF = SEMANA ? `dt-emb-sem-${hash([dados.t, dados.k.map(a => a[0])])}-` : "";
   const CHAVES = SEMANA ? [PREF + iso(segDa(0)), PREF + iso(segDa(1))] : ["dt-embarque-" + hash([dados.t, dados.e, dados.l.map(a => a[0])])];
-  const ests = CHAVES.map(k => ls.get(k, SEMANA ? {p: {}, f: {}} : []));
+  const ests = CHAVES.map(k => { const e = ls.get(k, {p: {}, f: {}}); return Array.isArray(e) ? {p: {x: e}, f: {}} : e; });
   if (SEMANA){                                                  // apaga as semanas que já passaram desta van
     try { Object.keys(localStorage).filter(k => k.startsWith(PREF) && k.slice(PREF.length) < iso(segDa(0))).forEach(k => localStorage.removeItem(k)); } catch(e){}
-    ests.forEach(e => { e.p = e.p || {}; e.f = e.f || {}; });
+  }
+  { ests.forEach(e => { e.p = e.p || {}; e.f = e.f || {}; });
   }
   let est = ests[sem()];
   const salva = () => { ests[sem()] = est; ls.set(CHAVES[sem()], est); };
-  const diaK = () => DIAS[pos % 5][0];
-  const pegosDia = () => new Set(SEMANA ? (est.p[diaK()] || []) : est);
-  const naoVai = i => SEMANA && (est.f[i] || []).includes(diaK());
+  const diaK = () => SEMANA ? DIAS[pos % 5][0] : "x";
+  const pegosDia = () => new Set(est.p[diaK()] || []);
+  const naoVai = i => (est.f[i] || []).includes(diaK());
   const listaBase = () => SEMANA ? (dados.d[diaK()] || []).map(i => ({i, a: dados.k[i]})) : dados.l.map((a, i) => ({i, a: [a[0], [a[1], a[2]].filter(Boolean).join(" · "), a[3]]}));
   /* ordem que o motorista arrumou segurando e arrastando (fica neste celular; vale toda semana) */
   const CH_ORDEM = "dt-emb-ordem-" + hash([dados.t, dados.e || "", SEMANA ? dados.k.map(a => a[0]) : dados.l.map(a => a[0])]);
@@ -201,8 +192,8 @@
         const [nome, ref, tel] = x.a, foi = pegos.has(x.i), nv = naoVai(x.i);
         return `<button type="button" class="aluno${nv ? " naovai" : foi ? " pegou" : ""}" data-i="${x.i}" aria-pressed="${foi}">
           <span class="num">${pos + 1}</span>
-          <span class="txt"><span class="nome">${esc(nome)}</span><span class="esc">${esc(ref)}</span><span class="estado">${nv ? "NÃO VAI" : foi ? "🔴 PEGOU ✔" : "🟢 FALTA PEGAR"}</span></span>
-          <span class="acoes-a">${SEMANA ? `<span class="falta" role="button" tabindex="0" data-f="${x.i}" aria-label="Marcar dias que ${esc(nome)} não vai">Não vai</span>` : ""}${tel ? `<a class="tel" href="tel:+55${esc(tel)}" title="Ligar pro responsável" aria-label="Ligar pro responsável de ${esc(nome)}">📞</a>` : ""}</span>
+          <span class="txt"><span class="nome">${esc(nome)}</span><span class="esc">${esc(ref)}</span><span class="estado">${nv ? "✖ NÃO VAI" : foi ? "🔴 PEGOU ✔" : "🟢 FALTA PEGAR"}</span></span>
+          <span class="acoes-a"><span class="falta" role="button" tabindex="0" data-f="${x.i}" aria-label="${nv ? `Desfazer: ${esc(nome)} vai sim` : `Marcar que ${esc(nome)} não vai`}">${nv ? "Desfazer" : "Não vai"}</span>${tel ? `<a class="tel" href="tel:+55${esc(tel)}" title="Ligar pro responsável" aria-label="Ligar pro responsável de ${esc(nome)}">📞</a>` : ""}</span>
         </button>`;
       }).join("");
   }
@@ -254,38 +245,23 @@
   $("#lista").addEventListener("click", e => {
     if (ignoraClique){ e.preventDefault(); return; }
     if (e.target.closest(".tel")) return;                       // o 📞 só liga, não muda a cor
-    const f = e.target.closest("[data-f]"); if (f){ e.preventDefault(); abreFalta(+f.dataset.f); return; }
+    const f = e.target.closest("[data-f]"); if (f){ e.preventDefault(); marcaNaoVai(+f.dataset.f); return; }
     const b = e.target.closest(".aluno"); if (!b) return;
     const i = +b.dataset.i;
-    if (naoVai(i)){ abreFalta(i); return; }                     // cinza: abre pra desmarcar, se precisar
-    if (SEMANA){ const s = new Set(est.p[diaK()] || []); s.has(i) ? s.delete(i) : s.add(i); est.p[diaK()] = [...s]; }
-    else { const s = new Set(est); s.has(i) ? s.delete(i) : s.add(i); est = [...s]; }   // salva() guarda em ests[0]
+    if (naoVai(i)){ marcaNaoVai(i); return; }                   // tocou num "não vai": desfaz (volta pro verde)
+    const s = new Set(est.p[diaK()] || []); s.has(i) ? s.delete(i) : s.add(i); est.p[diaK()] = [...s];
     salva(); desenha();
     if (navigator.vibrate) navigator.vibrate(30);
   });
 
   /* ---------- "Não vai" (dias da semana que está na tela) ---------- */
-  function abreFalta(i){
-    const nome = dados.k[i][0], marcados = new Set(est.f[i] || []);
-    const temDia = k => (dados.d[k] || []).includes(i);
-    const fundo = document.createElement("div"); fundo.className = "fundo-dlg";
-    fundo.innerHTML = `<div class="dlg" role="dialog" aria-modal="true" aria-label="Dias que ${esc(nome)} não vai">
-      <h2>${esc(nome)} não vai em:</h2>
-      <p>${sem() ? "Próxima semana" : "Esta semana"} (${String(segDa(sem()).getDate()).padStart(2, "0")}/${String(segDa(sem()).getMonth() + 1).padStart(2, "0")} a ${String(dataDo(sem() * 5 + 4).getDate()).padStart(2, "0")}/${String(dataDo(sem() * 5 + 4).getMonth() + 1).padStart(2, "0")}). No domingo a semana que passou é apagada.</p>
-      <div class="chips">${DIAS.map(([k, n]) => `<button type="button" data-k="${k}" aria-pressed="${marcados.has(k)}"${temDia(k) ? "" : " disabled"}>${n.slice(0, 3).toUpperCase()}</button>`).join("")}</div>
-      <div class="bts"><button type="button" data-x>Cancelar</button><button type="button" class="ok" data-ok>Salvar</button></div>
-    </div>`;
-    document.body.appendChild(fundo);
-    fundo.addEventListener("click", e => {
-      const c = e.target.closest("[data-k]");
-      if (c){ const k = c.dataset.k; marcados.has(k) ? marcados.delete(k) : marcados.add(k); c.setAttribute("aria-pressed", marcados.has(k)); return; }
-      if (e.target.closest("[data-ok]")){
-        if (marcados.size) est.f[i] = [...marcados]; else delete est.f[i];
-        DIAS.forEach(([k]) => { if (marcados.has(k) && est.p[k]) est.p[k] = est.p[k].filter(x => x !== i); });
-        salva(); fundo.remove(); desenha(); return;
-      }
-      if (e.target === fundo || e.target.closest("[data-x]")) fundo.remove();
-    });
+  /* "Não vai": um toque marca neste dia (fica vermelho e não conta como "falta pegar"); outro toque desfaz */
+  function marcaNaoVai(i){
+    const dias = new Set(est.f[i] || []), d = diaK();
+    if (dias.has(d)) dias.delete(d); else { dias.add(d); est.p[d] = (est.p[d] || []).filter(x => x !== i); }
+    if (dias.size) est.f[i] = [...dias]; else delete est.f[i];
+    salva(); desenha();
+    if (navigator.vibrate) navigator.vibrate(30);
   }
 
   /* ---------- trocar o dia: setas, bolinhas ou deslizar o dedo ---------- */
@@ -307,7 +283,7 @@
   poeCols(cols);
   $("#recomecar").onclick = () => {
     if (!confirm(SEMANA ? `Deixar todo mundo verde de novo em ${DIAS[pos % 5][1]}? (ex.: pra volta) — quem não vai continua marcado.` : "Deixar todo mundo verde de novo? (ex.: pra volta)")) return;
-    if (SEMANA) est.p[diaK()] = []; else est = [];
+    est.p[diaK()] = [];
     salva(); desenha();
   };
 
