@@ -22,7 +22,19 @@
   .barra{margin-top:10px;height:10px;border-radius:99px;background:rgba(255,255,255,.25);overflow:hidden}
   .barra i{display:block;height:100%;width:0;background:#ffd23f;transition:width .25s}
   main{padding:14px 12px 120px;display:grid;gap:12px;grid-template-columns:1fr;max-width:980px;margin:0 auto}
-  @media (min-width:700px){main{grid-template-columns:1fr 1fr}}
+  @media (min-width:700px){main.c1{grid-template-columns:1fr 1fr}}
+  /* 2 ou 3 colunas: botões em pé, mais crianças na tela de uma vez */
+  main.c2{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-inline:10px}
+  main.c3{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding-inline:8px}
+  main.c2 .aluno,main.c3 .aluno{flex-direction:column;align-items:flex-start;gap:6px;min-height:118px;padding:10px 10px 12px;border-radius:16px}
+  main.c2 .num,main.c3 .num{width:30px;height:30px;font-size:15px}
+  main.c2 .nome{font-size:clamp(18px,5.6vw,26px)}
+  main.c3 .nome{font-size:clamp(14px,4.3vw,20px)}
+  main.c2 .esc{font-size:13px;line-height:1.25}
+  main.c3 .esc{font-size:11.5px;line-height:1.25}
+  main.c2 .estado{margin-top:6px;font-size:11px;padding:4px 8px}
+  main.c3 .estado{margin-top:5px;font-size:10px;padding:3px 7px}
+  main.c2 .tel,main.c3 .tel{position:absolute;top:8px;right:8px;width:32px;height:32px;font-size:15px}
   .aluno{position:relative;display:flex;align-items:center;gap:14px;width:100%;min-height:96px;border:0;border-radius:20px;padding:14px 16px;text-align:left;cursor:pointer;
     background:var(--verde);color:#fff;box-shadow:0 6px 0 var(--verde-esc);transition:transform .08s,background .15s,box-shadow .15s;user-select:none}
   .aluno:active{transform:translateY(3px);box-shadow:0 3px 0 var(--verde-esc)}
@@ -35,7 +47,10 @@
   .estado{display:inline-block;margin-top:8px;font:800 13px Figtree,system-ui,sans-serif;letter-spacing:.04em;background:rgba(0,0,0,.2);border-radius:99px;padding:5px 10px;white-space:nowrap}
   .tel{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#fff;color:var(--tinta);text-decoration:none;font-size:20px}
   footer{position:fixed;left:0;right:0;bottom:0;z-index:2;display:flex;gap:10px;justify-content:center;padding:12px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom));background:rgba(246,241,246,.96);border-top:1px solid #e3d6e3}
-  footer button{font:800 16px Figtree,system-ui,sans-serif;border-radius:999px;padding:12px 18px;border:2px solid var(--roxo);background:#fff;color:var(--roxo);cursor:pointer}
+  footer button{font:800 15px Figtree,system-ui,sans-serif;border-radius:999px;padding:11px 14px;border:2px solid var(--roxo);background:#fff;color:var(--roxo);cursor:pointer;white-space:nowrap}
+  .cols{display:flex;align-items:center;gap:4px;font:800 13px Figtree,system-ui,sans-serif;color:var(--roxo)}
+  .cols button{width:40px;padding:9px 0;text-align:center}
+  .cols button[aria-pressed="true"]{background:var(--roxo);color:#fff}
   .vazio{grid-column:1/-1;background:#fff;border-radius:20px;padding:28px 20px;text-align:center;font-size:18px}
   .pronto{grid-column:1/-1;background:#fff8d6;border:2px solid #f0c419;border-radius:20px;padding:14px 16px;text-align:center;font:800 20px Kanit,system-ui,sans-serif}
 </style>
@@ -50,7 +65,8 @@
 </header>
 <main id="lista"></main>
 <footer>
-  <button type="button" id="recomecar">↺ Recomeçar (deixar todos verdes)</button>
+  <button type="button" id="recomecar">↺ Recomeçar</button>
+  <div class="cols" role="group" aria-label="Colunas">Colunas <button type="button" data-c="1">1</button><button type="button" data-c="2">2</button><button type="button" data-c="3">3</button></div>
 </footer>
 <script>
 (function(){
@@ -100,6 +116,11 @@
     salva(); desenha();
     if (navigator.vibrate) navigator.vibrate(30);
   });
+  /* quantas colunas (fica guardado neste celular) */
+  let cols = 2; try { cols = +localStorage.getItem("dt-embarque-cols") || 2; } catch(e){}
+  const poeCols = c => { cols = c; $("#lista").className = "c" + c; document.querySelectorAll(".cols button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.c === c)); try { localStorage.setItem("dt-embarque-cols", c); } catch(e){} };
+  document.querySelectorAll(".cols button").forEach(b => b.onclick = () => poeCols(+b.dataset.c));
+  poeCols(cols);
   $("#recomecar").onclick = () => { if (confirm("Deixar todo mundo verde de novo? (ex.: pra volta)")){ pegos.clear(); salva(); desenha(); } };
 
   /* deixa a tela acesa enquanto a lista está aberta */
