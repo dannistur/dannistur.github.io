@@ -23,11 +23,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,700;1,800;1,900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="estilo.css?v=37">
+<link rel="stylesheet" href="estilo.css?v=38">
 <style>body{margin:0} main.inicio{padding-block:24px 40px} main.inicio > .wrap{display:grid;gap:26px}</style>
 </head>
 <body>
 <header class="hero">
+  <div class="menu-dt">
+    <button type="button" class="menu-bt" id="menuBt" aria-label="Mais opções" aria-expanded="false" aria-controls="menuLista">⋮</button>
+    <div class="menu-lista" id="menuLista" hidden>
+      <a href="admin.html">🔒 Área Danni's</a>
+      <a href="admin.html#embarque">🚐 Listas de embarque</a>
+    </div>
+  </div>
   <img class="logo" src="logo.png" alt="Danni's Tur" width="750" height="160">
   <div class="slogan" aria-label="Vem com a gente!">VEM COM A GENTE<span>!!!</span></div>
 </header>
@@ -130,6 +137,13 @@
   <a href="admin.html">Área Danni's</a>
 </footer>
 
+<script>
+  (function(){ const bt = document.getElementById("menuBt"), l = document.getElementById("menuLista");
+    const fecha = () => { l.hidden = true; bt.setAttribute("aria-expanded", "false"); };
+    bt.addEventListener("click", e => { e.stopPropagation(); l.hidden = !l.hidden; bt.setAttribute("aria-expanded", String(!l.hidden)); });
+    document.addEventListener("click", e => { if (!e.target.closest(".menu-dt")) fecha(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") fecha(); }); })();
+</script>
 <script src="comum.js?v=20"></script>
 <script src="temporada.js?v=2"></script>
 <script>

@@ -467,3 +467,13 @@ img.van{height:auto}
 .tio-r.nao-sei span{justify-content:center;min-height:0;font-weight:600;color:var(--tinta-2)}
 .tio-r input:checked + span{border-color:var(--roxo);background:#f6ecf7;box-shadow:0 0 0 2px var(--roxo) inset;color:var(--tinta)}
 .tio-r input:focus-visible + span{outline:3px solid var(--laranja);outline-offset:2px}
+
+/* ⋮ menu do topo (Área Danni's e listas de embarque) */
+.hero{position:relative}
+.menu-dt{position:absolute;top:10px;right:0;z-index:20}
+.menu-bt{width:44px;height:44px;border-radius:50%;border:0;background:rgba(113,36,115,.08);color:var(--roxo);font:800 26px/1 var(--f-display);cursor:pointer}
+.menu-bt:hover,.menu-bt[aria-expanded="true"]{background:var(--roxo-claro)}
+.menu-lista{position:absolute;top:50px;right:0;min-width:230px;background:#fff;border:1px solid var(--linha);border-radius:16px;box-shadow:0 14px 30px rgba(0,0,0,.16);padding:6px;display:grid;text-align:left}
+.menu-lista[hidden]{display:none}
+.menu-lista a{display:block;padding:12px 14px;border-radius:11px;color:var(--tinta);text-decoration:none;font-weight:700;font-size:16px}
+.menu-lista a:hover,.menu-lista a:focus-visible{background:var(--roxo-claro)}

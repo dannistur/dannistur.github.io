@@ -43,6 +43,8 @@ function doPost(e){
       case "cinema_inscrever": return json_(cineInscrever_(req.dados));
       case "cinema_vagas":     return json_(cineVagas_());
       case "admin_cinema":     admin_(req); return json_(cineLista_());
+      case "admin_embarque":   admin_(req); return json_({ok:true, vans: embVans_(), semana: embSemana_()});
+      case "admin_embarque_salvar": admin_(req); return json_(embSalvar_(req));
       case "admin_cinema_pago": admin_(req); return json_(cineMarca_(req, "pago"));
       case "admin_cinema_cancelar": admin_(req); return json_(cineMarca_(req, "cancelado"));
       case "admin_cinema_limite": admin_(req); return json_(cineMudaLimite_(req));
@@ -751,6 +753,36 @@ function cfgAba_(){
   const ss = planilha_(); let sh = ss.getSheetByName("Config");
   if (!sh){ sh = ss.insertSheet("Config"); sh.getRange(1,1,1,2).setValues([["chave","valor"]]).setFontWeight("bold"); sh.hideSheet(); }
   return sh;
+}
+/* ===================== embarque por van (lista de quem a van pega, na ordem da rota) =====================
+   Duas listas por motorista: a do cinema e a da rota da semana (seg a sex).
+   Ficam só aqui no servidor (aba Config), protegidas pela senha do admin. */
+const EMB_DIAS = ["seg","ter","qua","qui","sex"];
+function embLe_(k){
+  try { const v = JSON.parse(cfg_(k) || "{}"); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; } catch(e){ return {}; }
+}
+function embVans_(){ return embLe_("embarque_vans"); }
+function embSemana_(){ return embLe_("embarque_semana"); }
+function embLimpa_(lista){
+  return (Array.isArray(lista) ? lista : []).slice(0, 80)
+    .map(a => [limpa_(a && a[0], 60), limpa_(a && a[1], 90), String((a && a[2]) || "").replace(/\D/g, "").slice(0, 13)]).filter(a => a[0]);
+}
+function embSalvar_(req){
+  const tio = limpa_(req.tio, 40); if (!tio) throw erro_("Van sem nome.");
+  const semana = req.modo === "semana", chave = semana ? "embarque_semana" : "embarque_vans";
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const v = embLe_(chave);
+    if (semana){
+      const dias = {}; EMB_DIAS.forEach(d => { const l = embLimpa_(req.dias && req.dias[d]); if (l.length) dias[d] = l; });
+      if (Object.keys(dias).length) v[tio] = {dias, em: agora_()}; else delete v[tio];
+    } else {
+      const l = embLimpa_(req.lista);
+      if (l.length) v[tio] = {l, em: agora_()}; else delete v[tio];
+    }
+    setCfg_(chave, JSON.stringify(v));
+    return {ok:true, vans: embVans_(), semana: embSemana_()};
+  } finally { lock.releaseLock(); }
 }
 function cfg_(k){
   const vals = cfgAba_().getDataRange().getValues();

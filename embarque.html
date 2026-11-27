@@ -34,7 +34,7 @@
   main.c3 .esc{font-size:11.5px;line-height:1.25}
   main.c2 .estado{margin-top:6px;font-size:11px;padding:4px 8px}
   main.c3 .estado{margin-top:5px;font-size:10px;padding:3px 7px}
-  main.c2 .tel,main.c3 .tel{position:absolute;top:8px;right:8px;width:32px;height:32px;font-size:15px}
+  main.c2 .tel,main.c3 .tel{width:32px;height:32px;font-size:15px}
   .aluno{position:relative;display:flex;align-items:center;gap:14px;width:100%;min-height:96px;border:0;border-radius:20px;padding:14px 16px;text-align:left;cursor:pointer;
     background:var(--verde);color:#fff;box-shadow:0 6px 0 var(--verde-esc);transition:transform .08s,background .15s,box-shadow .15s;user-select:none}
   .aluno:active{transform:translateY(3px);box-shadow:0 3px 0 var(--verde-esc)}
@@ -52,6 +52,34 @@
   .cols button{width:40px;padding:9px 0;text-align:center}
   .cols button[aria-pressed="true"]{background:var(--roxo);color:#fff}
   .vazio{grid-column:1/-1;background:#fff;border-radius:20px;padding:28px 20px;text-align:center;font-size:18px}
+  /* rota da semana: dia, não vai */
+  .dias{display:flex;align-items:center;gap:8px;margin-top:10px}
+  .dias[hidden]{display:none}
+  .dias .seta{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font:800 26px/1 Kanit,system-ui,sans-serif;cursor:pointer}
+  .dias .seta:disabled{opacity:.3}
+  .dia-atual{flex:1;text-align:center}
+  .dia-atual b{display:block;font:800 22px/1.05 Kanit,system-ui,sans-serif;text-transform:uppercase}
+  .bolinhas{display:flex;justify-content:center;gap:5px;margin-top:5px}
+  .bolinhas button{border:0;border-radius:999px;padding:3px 8px;font:800 11px Figtree,system-ui,sans-serif;background:rgba(255,255,255,.18);color:#fff;cursor:pointer}
+  .bolinhas button[aria-current="true"]{background:#ffd23f;color:var(--roxo)}
+  .aluno.naovai{background:#9a8f9a;box-shadow:0 6px 0 #6f646f}
+  .aluno.naovai .nome{text-decoration:line-through;text-decoration-thickness:3px}
+  .acoes-a{flex:none;display:flex;gap:6px}
+  main.c2 .acoes-a,main.c3 .acoes-a{position:absolute;top:8px;right:8px;gap:4px}
+  main.c2 .acoes-a .tel,main.c3 .acoes-a .tel,main.c2 .acoes-a .falta,main.c3 .acoes-a .falta{position:static}
+  .falta{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#fff;font-size:19px;cursor:pointer}
+  main.c2 .falta,main.c3 .falta{width:32px;height:32px;font-size:14px}
+  .fundo-dlg{position:fixed;inset:0;z-index:5;background:rgba(30,10,35,.55);display:grid;place-items:end center;padding:16px}
+  .dlg{width:min(100%,460px);background:#fff;border-radius:22px;padding:18px 16px 16px;display:grid;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .dlg h2{margin:0;font:800 22px/1.15 Kanit,system-ui,sans-serif}
+  .dlg p{margin:0;font-size:15px;color:#5b4d5e}
+  .dlg .chips{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .dlg .chips button{border:2px solid #cbbccb;border-radius:14px;padding:12px 0;background:#fff;font:800 15px Figtree,system-ui,sans-serif;color:var(--tinta);cursor:pointer}
+  .dlg .chips button[aria-pressed="true"]{background:#9a8f9a;border-color:#6f646f;color:#fff}
+  .dlg .chips button:disabled{opacity:.3}
+  .dlg .bts{display:flex;gap:8px;justify-content:flex-end}
+  .dlg .bts button{font:800 16px Figtree,system-ui,sans-serif;border-radius:999px;padding:12px 18px;border:2px solid var(--roxo);background:#fff;color:var(--roxo);cursor:pointer}
+  .dlg .bts .ok{background:var(--roxo);color:#fff}
   .pronto{grid-column:1/-1;background:#fff8d6;border:2px solid #f0c419;border-radius:20px;padding:14px 16px;text-align:center;font:800 20px Kanit,system-ui,sans-serif}
 </style>
 </head>
@@ -59,7 +87,12 @@
 <header>
   <div class="linha">
     <h1 id="tit">Embarque<small id="sub">Passeio do Cinema</small></h1>
-    <div class="placar"><span id="cont">0/0</span><small>já pegos</small></div>
+    <div class="placar"><span id="cont">0/0</span><small id="contSub">já pegos</small></div>
+  </div>
+  <div class="dias" id="dias" hidden>
+    <button type="button" class="seta" id="antes" aria-label="Dia anterior">‹</button>
+    <div class="dia-atual"><b id="diaNome">Segunda</b><div class="bolinhas" id="bolinhas"></div></div>
+    <button type="button" class="seta" id="depois" aria-label="Próximo dia">›</button>
   </div>
   <div class="barra"><i id="barra"></i></div>
 </header>
@@ -73,6 +106,8 @@
   "use strict";
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const ls = {get(k, pad){ try { const v = localStorage.getItem(k); return v == null ? pad : JSON.parse(v); } catch(e){ return pad; } },
+              set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }};
   /* a lista vem no próprio link (depois do #), gerado pela Área Danni's */
   let dados = null;
   try {
@@ -80,48 +115,122 @@
     const bin = atob(b.replace(/-/g, "+").replace(/_/g, "/"));
     dados = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
   } catch(e){}
-  if (!dados || !Array.isArray(dados.l)){
+  const SEMANA = !!(dados && dados.k && dados.d);
+  if (!dados || !(Array.isArray(dados.l) || SEMANA)){
     $("#lista").innerHTML = `<div class="vazio">Link incompleto 😕<br><small>Peça o link da lista de embarque de novo pra Danni's Tur.</small></div>`;
     $("footer").hidden = true; return;
   }
   document.title = `Embarque · ${dados.t || "Danni's Tur"}`;
   $("#tit").firstChild.textContent = `🚐 ${dados.t || "Embarque"}`;
-  $("#sub").textContent = dados.e || "Passeio do Cinema";
+  $("#sub").textContent = dados.e || (SEMANA ? "Rota da semana" : "Passeio do Cinema");
+  const hash = arr => { let h = 0; for (const c of JSON.stringify(arr)) h = (h * 31 + c.charCodeAt(0)) | 0; return (h >>> 0).toString(36); };
 
-  /* quem já foi pego fica guardado neste celular (se fechar e abrir de novo, continua igual) */
-  let h = 0; for (const c of JSON.stringify([dados.t, dados.e, dados.l.map(a => a[0])])) h = (h * 31 + c.charCodeAt(0)) | 0;
-  const CHAVE = "dt-embarque-" + (h >>> 0).toString(36);
-  let pegos = new Set();
-  try { pegos = new Set(JSON.parse(localStorage.getItem(CHAVE) || "[]")); } catch(e){}
-  const salva = () => { try { localStorage.setItem(CHAVE, JSON.stringify([...pegos])); } catch(e){} };
+  /* ---------- rota da semana: dia escolhido, semana atual (sábado e domingo já mostram a semana que vem → zera no domingo) ---------- */
+  const DIAS = [["seg","Segunda"],["ter","Terça"],["qua","Quarta"],["qui","Quinta"],["sex","Sexta"]];
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const hoje = new Date(); hoje.setHours(12, 0, 0, 0);
+  const dow = hoje.getDay();                                     // 0 dom … 6 sáb
+  const segunda = new Date(hoje); segunda.setDate(hoje.getDate() + (dow === 0 ? 1 : dow === 6 ? 2 : 1 - dow));
+  const dataDo = i => { const d = new Date(segunda); d.setDate(segunda.getDate() + i); return d; };
+  const diasComLista = SEMANA ? DIAS.map((d, i) => i).filter(i => (dados.d[DIAS[i][0]] || []).length) : [];
+  let diaI = SEMANA ? (dow >= 1 && dow <= 5 && diasComLista.includes(dow - 1) ? dow - 1 : (diasComLista[0] || 0)) : 0;
+
+  /* o que fica guardado neste celular */
+  const PREF = SEMANA ? `dt-emb-sem-${hash([dados.t, dados.k.map(a => a[0])])}-` : "";
+  const CHAVE = SEMANA ? PREF + iso(segunda) : "dt-embarque-" + hash([dados.t, dados.e, dados.l.map(a => a[0])]);
+  let est = ls.get(CHAVE, SEMANA ? {p: {}, f: {}} : []);
+  if (SEMANA){                                                  // limpa semanas velhas desta van
+    try { Object.keys(localStorage).filter(k => k.startsWith(PREF) && k !== CHAVE).forEach(k => localStorage.removeItem(k)); } catch(e){}
+    est.p = est.p || {}; est.f = est.f || {};
+  }
+  const salva = () => ls.set(CHAVE, est);
+  const diaK = () => DIAS[diaI][0];
+  const pegosDia = () => new Set(SEMANA ? (est.p[diaK()] || []) : est);
+  const naoVai = i => SEMANA && (est.f[i] || []).includes(diaK());
+  const listaDia = () => SEMANA ? (dados.d[diaK()] || []).map(i => ({i, a: dados.k[i]})) : dados.l.map((a, i) => ({i, a: [a[0], [a[1], a[2]].filter(Boolean).join(" · "), a[3]]}));
 
   function desenha(){
-    const n = dados.l.length, p = dados.l.filter((a, i) => pegos.has(i)).length;
-    $("#cont").textContent = `${p}/${n}`;
-    $("#barra").style.width = n ? (p / n * 100) + "%" : "0";
-    $("#lista").innerHTML = (p === n && n ? `<div class="pronto">🎉 Todos pegos! Bora pro cinema!</div>` : "") + dados.l.map((a, i) => {
-      const [nome, escola, periodo, tel] = a, foi = pegos.has(i);
-      return `<button type="button" class="aluno${foi ? " pegou" : ""}" data-i="${i}" aria-pressed="${foi}">
-        <span class="num">${i + 1}</span>
-        <span class="txt"><span class="nome">${esc(nome)}</span><span class="esc">${esc([escola, periodo].filter(Boolean).join(" · "))}</span><span class="estado">${foi ? "🔴 PEGOU ✔" : "🟢 FALTA PEGAR"}</span></span>
-        ${tel ? `<a class="tel" href="tel:+55${esc(tel)}" title="Ligar pro responsável" aria-label="Ligar pro responsável de ${esc(nome)}">📞</a>` : ""}
-      </button>`;
-    }).join("");
+    const lista = listaDia(), pegos = pegosDia();
+    const vao = lista.filter(x => !naoVai(x.i)), p = vao.filter(x => pegos.has(x.i)).length, nao = lista.length - vao.length;
+    $("#cont").textContent = `${p}/${vao.length}`;
+    $("#contSub").textContent = nao ? `já pegos · ${nao} não ${nao > 1 ? "vão" : "vai"}` : "já pegos";
+    $("#barra").style.width = vao.length ? (p / vao.length * 100) + "%" : "0";
+    if (SEMANA){
+      $("#dias").hidden = false;
+      const d = dataDo(diaI);
+      $("#diaNome").textContent = `${DIAS[diaI][1]} · ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+      $("#bolinhas").innerHTML = DIAS.map(([k, n], i) => `<button type="button" data-dia="${i}" aria-current="${i === diaI}"${diasComLista.includes(i) ? "" : " disabled"}>${n.slice(0, 3).toUpperCase()}</button>`).join("");
+      $("#antes").disabled = !diasComLista.some(i => i < diaI); $("#depois").disabled = !diasComLista.some(i => i > diaI);
+    }
+    $("#lista").innerHTML = (!lista.length ? `<div class="vazio">Ninguém na lista deste dia.</div>` : "")
+      + (p === vao.length && vao.length ? `<div class="pronto">🎉 Todos pegos!${SEMANA ? "" : " Bora pro cinema!"}</div>` : "")
+      + lista.map((x, pos) => {
+        const [nome, ref, tel] = x.a, foi = pegos.has(x.i), nv = naoVai(x.i);
+        return `<button type="button" class="aluno${nv ? " naovai" : foi ? " pegou" : ""}" data-i="${x.i}" aria-pressed="${foi}">
+          <span class="num">${pos + 1}</span>
+          <span class="txt"><span class="nome">${esc(nome)}</span><span class="esc">${esc(ref)}</span><span class="estado">${nv ? "🚫 NÃO VAI" : foi ? "🔴 PEGOU ✔" : "🟢 FALTA PEGAR"}</span></span>
+          <span class="acoes-a">${SEMANA ? `<span class="falta" role="button" tabindex="0" data-f="${x.i}" title="Marcar dias que não vai" aria-label="Marcar dias que ${esc(nome)} não vai">🚫</span>` : ""}${tel ? `<a class="tel" href="tel:+55${esc(tel)}" title="Ligar pro responsável" aria-label="Ligar pro responsável de ${esc(nome)}">📞</a>` : ""}</span>
+        </button>`;
+      }).join("");
   }
   $("#lista").addEventListener("click", e => {
-    if (e.target.closest(".tel")) return;            // o 📞 só liga, não muda a cor
+    if (e.target.closest(".tel")) return;                       // o 📞 só liga, não muda a cor
+    const f = e.target.closest("[data-f]"); if (f){ e.preventDefault(); abreFalta(+f.dataset.f); return; }
     const b = e.target.closest(".aluno"); if (!b) return;
     const i = +b.dataset.i;
-    pegos.has(i) ? pegos.delete(i) : pegos.add(i);
+    if (naoVai(i)){ abreFalta(i); return; }                     // cinza: abre pra desmarcar, se precisar
+    if (SEMANA){ const s = new Set(est.p[diaK()] || []); s.has(i) ? s.delete(i) : s.add(i); est.p[diaK()] = [...s]; }
+    else { const s = new Set(est); s.has(i) ? s.delete(i) : s.add(i); est = [...s]; }
     salva(); desenha();
     if (navigator.vibrate) navigator.vibrate(30);
   });
+
+  /* ---------- 🚫 não vai (dias desta semana) ---------- */
+  function abreFalta(i){
+    const nome = dados.k[i][0], marcados = new Set(est.f[i] || []);
+    const temDia = k => (dados.d[k] || []).includes(i);
+    const fundo = document.createElement("div"); fundo.className = "fundo-dlg";
+    fundo.innerHTML = `<div class="dlg" role="dialog" aria-modal="true" aria-label="Dias que ${esc(nome)} não vai">
+      <h2>🚫 ${esc(nome)} não vai em:</h2>
+      <p>Toque nos dias desta semana. No domingo zera sozinho.</p>
+      <div class="chips">${DIAS.map(([k, n]) => `<button type="button" data-k="${k}" aria-pressed="${marcados.has(k)}"${temDia(k) ? "" : " disabled"}>${n.slice(0, 3).toUpperCase()}</button>`).join("")}</div>
+      <div class="bts"><button type="button" data-x>Cancelar</button><button type="button" class="ok" data-ok>Salvar</button></div>
+    </div>`;
+    document.body.appendChild(fundo);
+    fundo.addEventListener("click", e => {
+      const c = e.target.closest("[data-k]");
+      if (c){ const k = c.dataset.k; marcados.has(k) ? marcados.delete(k) : marcados.add(k); c.setAttribute("aria-pressed", marcados.has(k)); return; }
+      if (e.target.closest("[data-ok]")){
+        if (marcados.size) est.f[i] = [...marcados]; else delete est.f[i];
+        DIAS.forEach(([k]) => { if (marcados.has(k) && est.p[k]) est.p[k] = est.p[k].filter(x => x !== i); });
+        salva(); fundo.remove(); desenha(); return;
+      }
+      if (e.target === fundo || e.target.closest("[data-x]")) fundo.remove();
+    });
+  }
+
+  /* ---------- trocar o dia: setas, bolinhas ou deslizar o dedo ---------- */
+  const vaiPara = i => { if (!diasComLista.includes(i) || i === diaI) return; diaI = i; desenha(); window.scrollTo({top: 0}); };
+  const passo = dir => { const prox = dir > 0 ? diasComLista.find(i => i > diaI) : [...diasComLista].reverse().find(i => i < diaI); if (prox != null) vaiPara(prox); };
+  if (SEMANA){
+    $("#antes").onclick = () => passo(-1); $("#depois").onclick = () => passo(1);
+    $("#bolinhas").addEventListener("click", e => { const b = e.target.closest("[data-dia]"); if (b) vaiPara(+b.dataset.dia); });
+    let x0 = null, y0 = 0;
+    document.addEventListener("touchstart", e => { if (e.target.closest(".fundo-dlg")) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, {passive: true});
+    document.addEventListener("touchend", e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+      if (Math.abs(dx) > 70 && Math.abs(dy) < 50) passo(dx < 0 ? 1 : -1); }, {passive: true});
+  }
+
   /* quantas colunas (fica guardado neste celular) */
   let cols = 2; try { cols = +localStorage.getItem("dt-embarque-cols") || 2; } catch(e){}
   const poeCols = c => { cols = c; $("#lista").className = "c" + c; document.querySelectorAll(".cols button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.c === c)); try { localStorage.setItem("dt-embarque-cols", c); } catch(e){} };
   document.querySelectorAll(".cols button").forEach(b => b.onclick = () => poeCols(+b.dataset.c));
   poeCols(cols);
-  $("#recomecar").onclick = () => { if (confirm("Deixar todo mundo verde de novo? (ex.: pra volta)")){ pegos.clear(); salva(); desenha(); } };
+  $("#recomecar").onclick = () => {
+    if (!confirm(SEMANA ? `Deixar todo mundo verde de novo em ${DIAS[diaI][1]}? (ex.: pra volta) — quem não vai continua marcado.` : "Deixar todo mundo verde de novo? (ex.: pra volta)")) return;
+    if (SEMANA) est.p[diaK()] = []; else est = [];
+    salva(); desenha();
+  };
 
   /* deixa a tela acesa enquanto a lista está aberta */
   let trava = null;
