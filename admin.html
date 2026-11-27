@@ -87,6 +87,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 .cine-van-bts{display:flex;gap:8px;flex-wrap:wrap;margin:-2px 0 4px}
 .cine-van-bts a,.cine-van-bts button{font:700 13px var(--f-corpo);border-radius:999px;padding:7px 12px;border:1.5px solid var(--linha);background:#fff;color:var(--tinta);text-decoration:none;cursor:pointer}
 .cine-van-bts a{background:#1fa855;border-color:#1fa855;color:#fff}
+.cine-van-bts a.emb{background:#712473;border-color:#712473}
 .cine-busca input{font-size:16px}
 .cine-lot{border:2px solid var(--linha);border-radius:14px;padding:12px;display:grid;gap:10px}
 .cine-lot p{margin:0;font-weight:800;font-size:16px}
@@ -741,6 +742,13 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
     return `🚐 *${t.toUpperCase()}*\n👧👦 *${l.length} criança${l.length !== 1 ? "s" : ""}*${so ? " (só quem pagou)" : ` · ✅ ${pagos} pago${pagos !== 1 ? "s" : ""} · ⏳ ${l.length - pagos} falta${l.length - pagos !== 1 ? "m" : ""}`}\n${LINHA_Z}\n\n` +
       l.map((c, i) => `*${i + 1}) ${String(c.crianca).toUpperCase()}*\n🏫 ${c.escola} · ${c.periodo}\n👤 ${c.responsavel}\n📞 ${c.celular}${so ? "" : `\n${c.pago ? "✅ Pago" : "⏳ Falta pagar"}`}`).join("\n\n");
   }
+  /* tela de embarque (botões verdes → vermelhos) — a lista vai dentro do link, nada fica público no site */
+  function linkEmbarque(t, so){
+    const l = cineDoTio(t, so).map(c => [c.crianca, c.escola, c.periodo, String(c.celular || "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "")]);
+    const bytes = new TextEncoder().encode(JSON.stringify({t, e: "Passeio do Cinema · 28/11", l}));
+    let bin = ""; bytes.forEach(b => bin += String.fromCharCode(b));
+    return new URL("embarque.html", location.href).href + "#d=" + btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
   function cineTextoTio(t, so){
     return `${LINHA_Z}\n${cineCab()}\n${LINHA_Z}\n\n${cineBlocoTio(t, so)}\n\n${LINHA_Z}`;
   }
@@ -815,7 +823,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
       if (!todos.length || (q && !doTio.length)) return "";
       const tv = TIOS_V.find(x => x.nome === t);
       return `<div class="cine-van"><h4>${esc(t)} <small>${todos.length} criança${todos.length > 1 ? "s" : ""} · ${todos.filter(c => c.pago).length} pago${todos.filter(c => c.pago).length !== 1 ? "s" : ""}</small></h4>
-        ${q ? "" : `<div class="cine-van-bts">${tv ? `<a href="${zapLink(tv.fone, cineTextoTio(t, so))}" target="_blank" rel="noopener">📲 Mandar lista pro ${esc(t)}</a>` : ""}<button type="button" class="cine-cp" data-t="${esc(t)}">Copiar lista</button><button type="button" class="cine-pdf" data-t="${esc(t)}">📄 PDF pra imprimir</button></div>`}
+        ${q ? "" : `<div class="cine-van-bts">${tv ? `<a href="${zapLink(tv.fone, cineTextoTio(t, so))}" target="_blank" rel="noopener">📲 Mandar lista pro ${esc(t)}</a>` : ""}<a class="emb" href="${linkEmbarque(t, so)}" target="_blank" rel="noopener">🟢 Abrir lista de embarque</a>${tv ? `<a class="emb" href="${zapLink(tv.fone, `🚐 Lista de embarque do cinema (${t}).\nAbra, e quando pegar cada criança toque no nome: fica vermelho.\n\n${linkEmbarque(t, so)}`)}" target="_blank" rel="noopener">📲 Mandar embarque pro ${esc(t)}</a>` : ""}<button type="button" class="cine-cp" data-t="${esc(t)}">Copiar lista</button><button type="button" class="cine-pdf" data-t="${esc(t)}">📄 PDF pra imprimir</button></div>`}
         ${doTio.map(c => `<div class="cine-item${c.pago ? " pago" : ""}">
           <span><b>${marcaBusca(c.crianca, q)}</b> · ${esc(c.escola)} ${esc(c.periodo)}<br><small>${marcaBusca(c.responsavel, q)} · ${esc(c.celular)} · ${esc(c.grupo)}</small></span>
           <span class="acoes-c"><button type="button" class="bt-pago" data-g="${esc(c.grupo)}" data-v="${c.pago ? "" : "1"}">${c.pago ? "✅ Pago" : "Marcar pago"}</button>
