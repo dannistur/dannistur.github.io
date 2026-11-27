@@ -43,7 +43,9 @@ function doPost(e){
       case "cinema_inscrever": return json_(cineInscrever_(req.dados));
       case "cinema_vagas":     return json_(cineVagas_());
       case "admin_cinema":     admin_(req); return json_(cineLista_());
-      case "admin_embarque":   admin_(req); return json_({ok:true, vans: embVans_(), semana: embSemana_()});
+      case "admin_embarque":   admin_(req); return json_({ok:true, vans: embVans_(), semana: embSemana_(), temSenhaMot: !!cfg_("mot_senha_hash")});
+      case "admin_mot_senha":  admin_(req); return json_(motDefineSenha_(req));
+      case "mot_listas":       return json_(motListas_(req));
       case "admin_embarque_salvar": admin_(req); return json_(embSalvar_(req));
       case "admin_cinema_pago": admin_(req); return json_(cineMarca_(req, "pago"));
       case "admin_cinema_cancelar": admin_(req); return json_(cineMarca_(req, "cancelado"));
@@ -783,6 +785,25 @@ function embSalvar_(req){
     setCfg_(chave, JSON.stringify(v));
     return {ok:true, vans: embVans_(), semana: embSemana_()};
   } finally { lock.releaseLock(); }
+}
+/* ===================== Área dos motoristas =====================
+   Senha própria (diferente da do admin), criada pela Danni's no admin. Só dá acesso às listas de embarque.
+   Guardamos só o "resumo" (hash) da senha; trocar a senha desconecta todo mundo. */
+function motHash_(s){
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, "dt-mot|" + String(s || "").trim().toLowerCase(), Utilities.Charset.UTF_8)
+    .map(b => ((b + 256) % 256).toString(16).padStart(2, "0")).join("");
+}
+function motListas_(req){
+  const h = cfg_("mot_senha_hash");
+  if (!h) throw erro_("A Danni's ainda não criou a senha dos motoristas.", "sem_senha");
+  if (motHash_(req.senha) !== h){ Utilities.sleep(1200); throw erro_("Senha errada.", "senha"); }
+  return {ok:true, vans: embVans_(), semana: embSemana_()};
+}
+function motDefineSenha_(req){
+  const s = String(req.nova || "").trim();
+  if (s.length < 4) throw erro_("A senha dos motoristas precisa ter pelo menos 4 letras ou números.");
+  setCfg_("mot_senha_hash", motHash_(s));
+  return {ok:true};
 }
 function cfg_(k){
   const vals = cfgAba_().getDataRange().getValues();

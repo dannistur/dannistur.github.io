@@ -53,6 +53,7 @@
   .cols button[aria-pressed="true"]{background:var(--roxo);color:#fff}
   .vazio{grid-column:1/-1;background:#fff;border-radius:20px;padding:28px 20px;text-align:center;font-size:18px}
   /* rota da semana: dia, não vai */
+  .voltar{display:inline-flex;align-items:center;margin:-2px 0 8px;padding:7px 14px 7px 10px;border-radius:999px;background:rgba(255,255,255,.18);color:#fff;font:800 15px Figtree,system-ui,sans-serif;text-decoration:none}
   .dias{display:flex;align-items:center;gap:8px;margin-top:10px}
   .dias[hidden]{display:none}
   .dias .seta{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font:800 26px/1 Kanit,system-ui,sans-serif;cursor:pointer}
@@ -85,6 +86,7 @@
 </head>
 <body>
 <header>
+  <a class="voltar" id="voltar" href="motorista.html">‹ Voltar</a>
   <div class="linha">
     <h1 id="tit">Embarque<small id="sub">Passeio do Cinema</small></h1>
     <div class="placar"><span id="cont">0/0</span><small id="contSub">já pegos</small></div>
@@ -121,6 +123,13 @@
     $("footer").hidden = true; return;
   }
   document.title = `Embarque · ${dados.t || "Danni's Tur"}`;
+  /* ‹ Voltar: da Área dos motoristas volta pra ela; da Área Danni's volta pra ela; link do WhatsApp vai pra Área dos motoristas */
+  $("#voltar").addEventListener("click", e => {
+    if (/[#&]m=1\b/.test(location.hash)) return;                            // segue o link pra motorista.html
+    e.preventDefault();
+    if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin){ history.back(); return; }
+    location.href = "motorista.html";
+  });
   $("#tit").firstChild.textContent = `🚐 ${dados.t || "Embarque"}`;
   $("#sub").textContent = dados.e || (SEMANA ? "Rota da semana" : "Passeio do Cinema");
   const hash = arr => { let h = 0; for (const c of JSON.stringify(arr)) h = (h * 31 + c.charCodeAt(0)) | 0; return (h >>> 0).toString(36); };

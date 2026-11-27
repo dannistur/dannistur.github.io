@@ -823,7 +823,7 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
       if (!todos.length || (q && !doTio.length)) return "";
       const tv = TIOS_V.find(x => x.nome === t);
       return `<div class="cine-van"><h4>${esc(t)} <small>${todos.length} criança${todos.length > 1 ? "s" : ""} · ${todos.filter(c => c.pago).length} pago${todos.filter(c => c.pago).length !== 1 ? "s" : ""}</small></h4>
-        ${q ? "" : `<div class="cine-van-bts">${tv ? `<a href="${zapLink(tv.fone, cineTextoTio(t, so))}" target="_blank" rel="noopener">📲 Mandar lista pro ${esc(t)}</a>` : ""}<a class="emb" href="${linkEmbarque(t, so)}" target="_blank" rel="noopener">🟢 Abrir lista de embarque</a>${tv ? `<a class="emb" href="${zapLink(tv.fone, `🚐 Lista de embarque do cinema (${t}).\nAbra, e quando pegar cada criança toque no nome: fica vermelho.\n\n${linkEmbarque(t, so)}`)}" target="_blank" rel="noopener">📲 Mandar embarque pro ${esc(t)}</a>` : ""}<button type="button" class="cine-cp" data-t="${esc(t)}">Copiar lista</button><button type="button" class="cine-pdf" data-t="${esc(t)}">📄 PDF pra imprimir</button></div>`}
+        ${q ? "" : `<div class="cine-van-bts">${tv ? `<a href="${zapLink(tv.fone, cineTextoTio(t, so))}" target="_blank" rel="noopener">📲 Mandar lista pro ${esc(t)}</a>` : ""}<a class="emb" href="${linkEmbarque(t, so)}">🟢 Abrir lista de embarque</a>${tv ? `<a class="emb" href="${zapLink(tv.fone, `🚐 Lista de embarque do cinema (${t}).\nAbra, e quando pegar cada criança toque no nome: fica vermelho.\n\n${linkEmbarque(t, so)}`)}" target="_blank" rel="noopener">📲 Mandar embarque pro ${esc(t)}</a>` : ""}<button type="button" class="cine-cp" data-t="${esc(t)}">Copiar lista</button><button type="button" class="cine-pdf" data-t="${esc(t)}">📄 PDF pra imprimir</button></div>`}
         ${doTio.map(c => `<div class="cine-item${c.pago ? " pago" : ""}">
           <span><b>${marcaBusca(c.crianca, q)}</b> · ${esc(c.escola)} ${esc(c.periodo)}<br><small>${marcaBusca(c.responsavel, q)} · ${esc(c.celular)} · ${esc(c.grupo)}</small></span>
           <span class="acoes-c"><button type="button" class="bt-pago" data-g="${esc(c.grupo)}" data-v="${c.pago ? "" : "1"}">${c.pago ? "✅ Pago" : "Marcar pago"}</button>
@@ -1166,6 +1166,6 @@ dialog#dlgCartao::backdrop{background:rgba(31,26,33,.65)}
 </script>
 <script src="locacao.js?v=3"></script>
 <script src="novo-contrato.js?v=1"></script>
-<script src="embarque-adm.js?v=1"></script>
+<script src="embarque-adm.js?v=3"></script>
 </body>
 </html>

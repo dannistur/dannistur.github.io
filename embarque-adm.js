@@ -41,7 +41,14 @@
       </div>
       <p class="msg-err" id="embErr" role="alert"></p>
     </div>
-    <p class="ok-msg" id="embOk" role="status"></p>`;
+    <p class="ok-msg" id="embOk" role="status"></p>
+    <div class="emb-mot">
+      <b>🔑 Área dos motoristas</b>
+      <p class="emb-ajuda" style="margin:0">Daniel, Joyce, Luiz e Cíntia entram em <a href="motorista.html" target="_blank" rel="noopener">⋮ › Área dos motoristas</a> com uma senha só deles e veem <b>só as listas</b>, nada do resto da Área Danni's. Entram uma vez e ficam conectados. Trocar a senha desconecta todo mundo.</p>
+      <p class="emb-ajuda" id="motStatus" style="margin:0;font-weight:700"></p>
+      <div class="emb-mot-linha"><input type="text" id="motSenha" placeholder="Nova senha dos motoristas" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn btn-sec" type="button" id="motSalvar">Salvar senha</button></div>
+      <p class="msg-err" id="motErr" role="alert"></p>
+    </div>`;
   ($("#aniv") || $("#placar")).after(card);
 
   const css = document.createElement("style");
@@ -75,7 +82,10 @@
     .emb-dias small{font-weight:700;opacity:.75}
     .emb-ajuda{font-size:13px;color:var(--tinta-2);line-height:1.4}
     .emb-ed textarea{width:100%;font:16px/1.5 var(--f-corpo);padding:10px 12px;border:1.5px solid var(--linha);border-radius:12px;resize:vertical}
-    .emb-ed-bts{display:flex;gap:8px;flex-wrap:wrap}`;
+    .emb-ed-bts{display:flex;gap:8px;flex-wrap:wrap}
+    .emb-mot{display:grid;gap:8px;border-top:1px dashed var(--linha);padding-top:12px}
+    .emb-mot-linha{display:flex;gap:8px;flex-wrap:wrap}
+    .emb-mot-linha input{flex:1;min-width:160px;font:16px var(--f-corpo);padding:10px 12px;border:1.5px solid var(--linha);border-radius:12px}`;
   document.head.appendChild(css);
 
   /* ---------- link da tela de embarque (a lista vai dentro do link, depois do #) ---------- */
@@ -110,7 +120,7 @@
         ? `🚐 Lista de embarque do cinema (${v.nome}).\nAbra e, quando pegar cada criança, toque no nome: fica vermelho. Tocou errado? Toque de novo.\n\n${link}`
         : `🚐 Rota da semana (${v.nome}).\nAbra todo dia: as setas ‹ › trocam o dia. Pegou a criança, toque no nome: fica vermelho. Tocou errado? Toque de novo.\n\n${link}`;
       return `<div class="emb-tio">
-        <a class="emb-foto${n ? "" : " vazio"}" data-i="${i}" href="${link || "#"}" ${link ? 'target="_blank" rel="noopener"' : ""} aria-label="${n ? `Abrir a lista da van ${esc(v.nome)} (${n} crianças)` : `Montar a lista da van ${esc(v.nome)}`}">
+        <a class="emb-foto${n ? "" : " vazio"}" data-i="${i}" href="${link || "#"}" aria-label="${n ? `Abrir a lista da van ${esc(v.nome)} (${n} crianças)` : `Montar a lista da van ${esc(v.nome)}`}">
           <img src="${v.foto}" alt="" loading="lazy"><span class="emb-n">${n || "+"}</span></a>
         <b>${esc(v.nome)}</b>
         <span class="emb-mini">${link ? `<a href="${zapLink(v.fone, msg)}" target="_blank" rel="noopener">📲 Mandar</a>` : ""}<button type="button" data-ed="${i}">✏️ Lista</button></span>
@@ -200,9 +210,21 @@
     b.disabled = false; b.textContent = txt;
   };
 
+  /* ---------- senha da Área dos motoristas ---------- */
+  const motStatus = tem => $("#motStatus").textContent = tem ? "✅ Senha criada. Pra trocar, digite outra e salve." : "⚠️ Ainda sem senha: os motoristas não conseguem entrar. Crie uma abaixo.";
+  $("#motSalvar").onclick = async () => {
+    const nova = $("#motSenha").value.trim(); $("#motErr").textContent = "";
+    if (nova.length < 4){ $("#motErr").textContent = "Use pelo menos 4 letras ou números."; return; }
+    if (!confirm("Salvar essa senha? Quem estiver conectado na Área dos motoristas vai precisar entrar de novo com ela.")) return;
+    const b = $("#motSalvar"); b.disabled = true; b.textContent = "Salvando…";
+    try { await api("admin_mot_senha", {senha: window.__dtSenha, nova}); $("#motSenha").value = ""; motStatus(true); $("#embOk").textContent = "✅ Senha dos motoristas salva. Passe pra eles junto com o caminho: ⋮ › Área dos motoristas."; }
+    catch(e){ $("#motErr").textContent = e.message || "Não consegui salvar."; }
+    b.disabled = false; b.textContent = "Salvar senha";
+  };
+
   /* ---------- carrega quando a Área Danni's entra ---------- */
   async function carrega(){
-    try { const r = await api("admin_embarque", {senha: window.__dtSenha}); cine = r.vans || {}; semana = r.semana || {}; }
+    try { const r = await api("admin_embarque", {senha: window.__dtSenha}); cine = r.vans || {}; semana = r.semana || {}; motStatus(!!r.temSenhaMot); }
     catch(e){ $("#embResumo").textContent = "não consegui carregar"; }
     desenha();
     if (/^#embarque\b/.test(location.hash)){ card.open = true; setTimeout(() => card.scrollIntoView({behavior: "smooth", block: "start"}), 150); }
