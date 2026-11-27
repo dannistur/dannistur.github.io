@@ -38,6 +38,12 @@
   .aluno{position:relative;display:flex;align-items:center;gap:14px;width:100%;min-height:96px;border:0;border-radius:20px;padding:14px 16px;text-align:left;cursor:pointer;
     background:var(--verde);color:#fff;box-shadow:0 6px 0 var(--verde-esc);transition:transform .08s,background .15s,box-shadow .15s;user-select:none}
   .aluno:active{transform:translateY(3px);box-shadow:0 3px 0 var(--verde-esc)}
+  .aluno{-webkit-touch-callout:none;-webkit-user-select:none}
+  .aluno.arrastando{transform:scale(1.06) rotate(-1.5deg)!important;box-shadow:0 14px 28px rgba(0,0,0,.35)!important;z-index:3;outline:4px solid #ffd23f;outline-offset:2px}
+  body.modo-arrastar .aluno:not(.arrastando){opacity:.75}
+  body.modo-arrastar{overscroll-behavior:none}
+  .dica-arrastar{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 10px);transform:translateX(-50%);z-index:6;background:#1d1320;color:#fff;font:800 14px Figtree,system-ui,sans-serif;padding:9px 16px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.3);white-space:nowrap}
+  .dica-arrastar[hidden]{display:none}
   .aluno.pegou{background:var(--verm);box-shadow:0 6px 0 var(--verm-esc)}
   .aluno.pegou:active{box-shadow:0 3px 0 var(--verm-esc)}
   .num{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.22);font:800 20px Kanit,system-ui,sans-serif}
@@ -101,6 +107,7 @@
   <div class="barra"><i id="barra"></i></div>
 </header>
 <main id="lista"></main>
+<div class="dica-arrastar" id="dicaArrastar" hidden>Arraste pro lugar certo e solte ✋</div>
 <footer>
   <button type="button" id="recomecar">↺ Recomeçar</button>
   <div class="cols" role="group" aria-label="Colunas">Colunas <button type="button" data-c="1">1</button><button type="button" data-c="2">2</button><button type="button" data-c="3">3</button></div>
@@ -164,7 +171,16 @@
   const diaK = () => DIAS[pos % 5][0];
   const pegosDia = () => new Set(SEMANA ? (est.p[diaK()] || []) : est);
   const naoVai = i => SEMANA && (est.f[i] || []).includes(diaK());
-  const listaDia = () => SEMANA ? (dados.d[diaK()] || []).map(i => ({i, a: dados.k[i]})) : dados.l.map((a, i) => ({i, a: [a[0], [a[1], a[2]].filter(Boolean).join(" · "), a[3]]}));
+  const listaBase = () => SEMANA ? (dados.d[diaK()] || []).map(i => ({i, a: dados.k[i]})) : dados.l.map((a, i) => ({i, a: [a[0], [a[1], a[2]].filter(Boolean).join(" · "), a[3]]}));
+  /* ordem que o motorista arrumou segurando e arrastando (fica neste celular; vale toda semana) */
+  const CH_ORDEM = "dt-emb-ordem-" + hash([dados.t, dados.e || "", SEMANA ? dados.k.map(a => a[0]) : dados.l.map(a => a[0])]);
+  let ordens = ls.get(CH_ORDEM, {});
+  const chOrdem = () => SEMANA ? diaK() : "x";
+  const listaDia = () => {
+    const l = listaBase(), o = ordens[chOrdem()]; if (!Array.isArray(o)) return l;
+    const pos = new Map(o.map((i, k) => [i, k]));
+    return l.map((x, k) => ({x, k})).sort((a, b) => (pos.has(a.x.i) ? pos.get(a.x.i) : 1e3 + a.k) - (pos.has(b.x.i) ? pos.get(b.x.i) : 1e3 + b.k)).map(y => y.x);
+  };
 
   function desenha(){
     const lista = listaDia(), pegos = pegosDia();
@@ -190,7 +206,53 @@
         </button>`;
       }).join("");
   }
+  /* ---------- segurar e arrastar pra mudar a ordem ---------- */
+  let arr = null, segura = null, ignoraClique = false;
+  const tiraSegura = () => { if (segura){ clearTimeout(segura.t); segura = null; } };
+  $("#lista").addEventListener("pointerdown", e => {
+    const el = e.target.closest(".aluno"); if (!el || e.button > 0) return;
+    tiraSegura();
+    segura = {el, x: e.clientX, y: e.clientY, id: e.pointerId, t: setTimeout(() => comeca(el, segura), 450)};
+  });
+  function comeca(el, s){
+    if (!s) return;
+    arr = {el, x: s.x, y: s.y}; segura = null;
+    el.classList.add("arrastando"); document.body.classList.add("modo-arrastar");
+    if (navigator.vibrate) navigator.vibrate(40);
+    $("#dicaArrastar").hidden = false;
+  }
+  const rolaBorda = () => { if (!arr) return; const y = arr.y; if (y < 140) window.scrollBy(0, -12); else if (y > innerHeight - 110) window.scrollBy(0, 12); arr.raf = requestAnimationFrame(rolaBorda); };
+  function move(x, y){
+    if (segura && Math.hypot(x - segura.x, y - segura.y) > 10) tiraSegura();   // mexeu antes de segurar: é rolagem
+    if (!arr) return;
+    arr.x = x; arr.y = y;
+    if (!arr.raf) arr.raf = requestAnimationFrame(rolaBorda);
+    const alvo = document.elementFromPoint(x, y);
+    const outro = alvo && alvo.closest(".aluno");
+    if (!outro || outro === arr.el) return;
+    const r = outro.getBoundingClientRect(), L = $("#lista");
+    const depois = (y > r.top + r.height / 2 && x > r.left) || x > r.left + r.width / 2;
+    L.insertBefore(arr.el, depois ? outro.nextSibling : outro);
+  }
+  document.addEventListener("pointermove", e => { if (e.pointerType !== "touch") move(e.clientX, e.clientY); });
+  document.addEventListener("touchmove", e => {                // no celular: o toque manda; enquanto arrasta a página não rola
+    const t = e.touches[0]; if (!t) return;
+    if (arr) e.preventDefault();
+    move(t.clientX, t.clientY);
+  }, {passive: false});
+  const solta = () => {
+    tiraSegura(); if (!arr) return;
+    cancelAnimationFrame(arr.raf); arr.el.classList.remove("arrastando"); document.body.classList.remove("modo-arrastar");
+    ordens[chOrdem()] = [...$("#lista").querySelectorAll(".aluno")].map(b => +b.dataset.i);
+    ls.set(CH_ORDEM, ordens); arr = null; ignoraClique = true; setTimeout(() => { ignoraClique = false; }, 350);
+    $("#dicaArrastar").hidden = true; desenha();
+  };
+  document.addEventListener("pointerup", solta); document.addEventListener("touchend", solta); document.addEventListener("touchcancel", solta);
+  document.addEventListener("pointercancel", () => { if (!arr) tiraSegura(); });
+  $("#lista").addEventListener("contextmenu", e => { if (e.target.closest(".aluno")) e.preventDefault(); });
+
   $("#lista").addEventListener("click", e => {
+    if (ignoraClique){ e.preventDefault(); return; }
     if (e.target.closest(".tel")) return;                       // o 📞 só liga, não muda a cor
     const f = e.target.closest("[data-f]"); if (f){ e.preventDefault(); abreFalta(+f.dataset.f); return; }
     const b = e.target.closest(".aluno"); if (!b) return;
