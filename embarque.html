@@ -163,14 +163,32 @@
   const pegosDia = () => new Set(est.p[diaK()] || []);
   const naoVai = i => (est.f[i] || []).includes(diaK());
   const listaBase = () => SEMANA ? (dados.d[diaK()] || []).map(i => ({i, a: dados.k[i]})) : dados.l.map((a, i) => ({i, a: [a[0], [a[1], a[2]].filter(Boolean).join(" · "), a[3]]}));
-  /* ordem que o motorista arrumou segurando e arrastando (fica neste celular; vale toda semana) */
-  const CH_ORDEM = "dt-emb-ordem-" + hash([dados.t, dados.e || "", SEMANA ? dados.k.map(a => a[0]) : dados.l.map(a => a[0])]);
-  let ordens = ls.get(CH_ORDEM, {});
-  const chOrdem = () => SEMANA ? diaK() : "x";
+  /* ordem que o motorista arrumou segurando e arrastando. Fica neste celular e vale pra TODOS os dias e semanas
+     (mudou na terça, muda em todos). Guardada pelo nome, então pôr ou tirar alguém da lista não bagunça a ordem. */
+  const nomeDe = i => { const a = SEMANA ? dados.k[i] : dados.l[i]; return a[0] + "|" + (a[1] || ""); };
+  function ordemPadrao(){
+    const out = [], visto = new Set(), add = n => { if (!visto.has(n)){ visto.add(n); out.push(n); } };
+    if (SEMANA) DIAS.forEach(([d]) => (dados.d[d] || []).forEach(i => add(nomeDe(i)))); else dados.l.forEach((a, i) => add(nomeDe(i)));
+    return out;
+  }
+  function mescla(G, D){                       // D = nova ordem de parte das pessoas; as outras ficam onde estavam
+    G = G.slice(); D.forEach(n => { if (!G.includes(n)) G.push(n); });
+    const set = new Set(D), lugares = G.map((n, k) => set.has(n) ? k : -1).filter(k => k >= 0);
+    lugares.forEach((k, j) => { G[k] = D[j]; });
+    return G;
+  }
+  const CH_ORDEM = "dt-emb-ord2-" + hash([dados.t, dados.e || ""]);
+  let ordem = ls.get(CH_ORDEM, null);
+  if (!Array.isArray(ordem)){                  // traz a ordem do jeito antigo (separada por dia), se tiver
+    const velho = ls.get("dt-emb-ordem-" + hash([dados.t, dados.e || "", SEMANA ? dados.k.map(a => a[0]) : dados.l.map(a => a[0])]), {});
+    ordem = ordemPadrao(); let tinha = false;
+    (SEMANA ? DIAS.map(d => d[0]) : ["x"]).forEach(d => { if (Array.isArray(velho[d])){ tinha = true; ordem = mescla(ordem, velho[d].filter(i => (SEMANA ? dados.k : dados.l)[i]).map(nomeDe)); } });
+    if (tinha) ls.set(CH_ORDEM, ordem); else ordem = null;
+  }
   const listaDia = () => {
-    const l = listaBase(), o = ordens[chOrdem()]; if (!Array.isArray(o)) return l;
-    const pos = new Map(o.map((i, k) => [i, k]));
-    return l.map((x, k) => ({x, k})).sort((a, b) => (pos.has(a.x.i) ? pos.get(a.x.i) : 1e3 + a.k) - (pos.has(b.x.i) ? pos.get(b.x.i) : 1e3 + b.k)).map(y => y.x);
+    const l = listaBase(); if (!ordem) return l;
+    const pos = new Map(ordem.map((n, k) => [n, k]));
+    return l.map((x, k) => ({x, k, p: pos.has(nomeDe(x.i)) ? pos.get(nomeDe(x.i)) : 1e4 + k})).sort((a, b) => a.p - b.p).map(y => y.x);
   };
 
   function desenha(){
@@ -234,8 +252,8 @@
   const solta = () => {
     tiraSegura(); if (!arr) return;
     cancelAnimationFrame(arr.raf); arr.el.classList.remove("arrastando"); document.body.classList.remove("modo-arrastar");
-    ordens[chOrdem()] = [...$("#lista").querySelectorAll(".aluno")].map(b => +b.dataset.i);
-    ls.set(CH_ORDEM, ordens); arr = null; ignoraClique = true; setTimeout(() => { ignoraClique = false; }, 350);
+    ordem = mescla(ordem || ordemPadrao(), [...$("#lista").querySelectorAll(".aluno")].map(b => nomeDe(+b.dataset.i)));
+    ls.set(CH_ORDEM, ordem); arr = null; ignoraClique = true; setTimeout(() => { ignoraClique = false; }, 350);
     $("#dicaArrastar").hidden = true; desenha();
   };
   document.addEventListener("pointerup", solta); document.addEventListener("touchend", solta); document.addEventListener("touchcancel", solta);
